@@ -3,3 +3,9 @@
 
 const Pixels = require('./pixels.js');
 const Router = require('./router.js');
+
+const map = new Pixels('./data/map.png', './data/heatmap.png');
+
+map.on("ready", (data) => {
+  console.log(data);
+});
