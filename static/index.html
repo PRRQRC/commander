@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>Test site</h1>
+
+    <script>
+    const socket = new WebSocket('ws://localhost:3000/api/ws');
+    socket.onopen = () => {
+      console.log("Connected to server");
+    };
+
+    socket.onmessage = (msg) => {
+      var data;
+      try {
+        data = JSON.parse(msg.data);
+      } catch (e) {
+        console.log("Invalid JSON: ", e, msg);
+        return;
+      }
+
+      switch (data.type.toLowerCase()) {
+        case "job":
+          console.log("New job received: ", data.data);
+        break;
+        default:
+          console.log("Data received: ", data);
+        break;
+      }
+    };
+
+    function getPixel() {
+      socket.send(JSON.stringify({ type: "getJob" }));
+    }
+    </script>
+  </body>
+</html>
