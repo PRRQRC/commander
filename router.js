@@ -2,16 +2,21 @@ const ws = require("ws");
 const express = require("express");
 const fs = require("fs");
 
+const Pixels = require("./pixels.js");
+
 // the router module to handle requests, assign jobs, etc.
 
 class Router {
-  constructor(imageData) {
+  constructor(imageData, paths) {
     this.app = express();
 
     this.processing = [];
 
     this.imageData = imageData;
     this.pixels = this.sortByImportance(imageData.pixels.slice());
+
+    this.paths = paths;
+    this.imageAnalyzer = new Pixels(paths.map, paths.heatmap);
 
     this.server = this.app.listen(process.env.PORT || 3000);
     this.wsServer = new ws.Server({ server: this.server, path: '/api/ws' });
@@ -53,6 +58,9 @@ class Router {
             const job = data.jobId;
             this.finish(job);
           break;
+          case "updateData":
+            
+          break;
           default:
             console.log("Suspicious case...", data);
           break;
@@ -83,11 +91,12 @@ class Router {
     this.pixels = this.sortByImportance(this.pixels);
   }
   cleanUp() {
+    console.log("Checking " + this.processing.length + " unfinished jobs...");
+
     const unfinished = this.processing.filter((job) => {
-      return (new Date() - job.start) < 60000 * 6; // 60000 == 1 minute; remove every job that has been running for more than 6 minutes without completing
+      return (new Date() - job.start) < 60000; // 60000 == 1 minute; remove every job that has been running for more than 6 minutes without completing
     });
 
-    console.log("Checking " + unfinished.length + " unfinished jobs...");
 
     unfinished.forEach((job) => {
       this.pixels.push(job.data);
