@@ -2,7 +2,7 @@
 const EventEmitter = require('events');
 var sizeOf = require('image-size');
 var Jimp = require('jimp');
-const { runInThisContext } = require('vm');
+const Scraper = require("pixelcanvas-scraper");
 
 class ImportanceAnalyzer {
   constructor(heatmap, color) {
@@ -11,6 +11,8 @@ class ImportanceAnalyzer {
 
     this.colored = [];
     this.pixels = [];
+
+    this.scraper = new Scraper("57406ac14592dae5e720e0e68d0f4583", { x: -513, y: 2780, w: 32, h: 32 });
 
     this.importances = [];
 
@@ -57,6 +59,10 @@ class ImportanceAnalyzer {
     });
     this.importances = this.sortByImportance(this.importances);
     return this.importances;
+  }
+
+  update() {
+    
   }
 }
 
@@ -130,6 +136,25 @@ class Pixels {
         });
       }).catch(e => {
         console.log("Error (Size): ", e);
+      });
+    });
+  }
+
+  update(data) {
+    this.importances.update(data);
+  }
+
+  syncPixelCanvas() {
+    return new Promise((res, rej) => {
+      this.scraper.get().then(() => {
+        this.scraper.connectEventSource();
+        this.scraper.on("connectionReady", () => {
+          res(true);
+        });
+        this.scraper.on("connectionError", (e) => { rej(e); });
+        this.scraper.on("update", (data) => {
+          this.update(data);
+        });
       });
     });
   }

@@ -12,6 +12,7 @@
     "express": "^4.17.3",
     "image-size": "^1.0.1",
     "jimp": "^0.16.1",
+    "pixelcanvas-scraper": "^1.0.0",
     "ws": "^8.5.0"
   }
 }
