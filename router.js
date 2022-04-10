@@ -49,17 +49,16 @@ class Router {
 
         switch (data.type.toLowerCase()) {
           case "getjob":
-            const pixel = this.pixels.shift();
+            const pixel = (this.pixels.length <= 0 && this.processing.length > 0) ? this.processing.data.shift() : this.pixels.shift();
             const id = this.wsServer.getUniqueID();
             if (pixel) this.processing.push({ start: new Date(), data: pixel, id: socket.id, jobId: id });
             socket.send(JSON.stringify({ type: "job", data: { pixel: pixel, jobId: id } }));
+            this.processing = sortByTime(this.processing);
           break;
           case "finishedJob":
             const job = data.jobId;
             this.finish(job);
-          break;
-          case "updateData":
-            
+            this.processing = sortByTime(this.processing);
           break;
           default:
             console.log("Suspicious case...", data);
@@ -78,7 +77,10 @@ class Router {
 
     return this;
   }
-
+  
+  sortByTime(arr) {
+    return (arr.length <= 1) ? arr : [...this.sortByTime(arr.slice(1).filter((el) => el.start.getTime() >= arr[0].start.getTime())), arr[0], ...this.sortByTime(arr.slice(1).filter(el => el.start.getTime() < arr[0].start.getTime()))];
+  }
   sortByImportance(arr) {
     return (arr.length <= 1) ? arr : [...this.sortByImportance(arr.slice(1).filter((el) => el.importance <= arr[0].importance)), arr[0], ...this.sortByImportance(arr.slice(1).filter(el => el.importance > arr[0].importance))];
   }
@@ -102,6 +104,8 @@ class Router {
       this.pixels.push(job.data);
       this.processing.splice(this.processing.indexOf(job), 1);
     });
+
+    this.processing = sortByTime(this.processing);
   }
 
   handleDisconnect(socket) {
@@ -114,6 +118,7 @@ class Router {
     });
 
     this.pixels = this.sortByImportance(this.pixels);
+    this.processing = sortByTime(this.processing);
   }
 }
 

@@ -14,6 +14,12 @@
       console.log("Connected to server");
     };
 
+    function log(msg) {
+      var p = document.createElement("p");
+      p.innerHTML = msg;
+      document.getElementById("logs").appendChild(p);
+    }
+
     const COLOR_MAPPINGS = {
         '#6D001A': 0,
         '#BE0039': 1,
@@ -60,10 +66,12 @@
 
       switch (data.type.toLowerCase()) {
         case "job":
+          if (!data.data) {
+            log("No jobs available... idling");
+            return;
+          }
           console.log("New job received: ", data.data);
-          var p = document.createElement("p");
-          p.innerHTML = "New job: " + JSON.stringify(data.data);
-          document.getElementById("logs").appendChild(p);
+          log("New job received: " + JSON.stringify(data.data));
           break;
         default:
           console.log("Data received: ", data);
