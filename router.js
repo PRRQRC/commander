@@ -53,12 +53,12 @@ class Router {
             const id = this.wsServer.getUniqueID();
             if (pixel) this.processing.push({ start: new Date(), data: pixel, id: socket.id, jobId: id });
             socket.send(JSON.stringify({ type: "job", data: { pixel: pixel, jobId: id } }));
-            this.processing = sortByTime(this.processing);
+            this.processing = this.sortByTime(this.processing);
           break;
           case "finishedJob":
             const job = data.jobId;
             this.finish(job);
-            this.processing = sortByTime(this.processing);
+            this.processing = this.sortByTime(this.processing);
           break;
           default:
             console.log("Suspicious case...", data);
@@ -105,7 +105,7 @@ class Router {
       this.processing.splice(this.processing.indexOf(job), 1);
     });
 
-    this.processing = sortByTime(this.processing);
+    this.processing = this.sortByTime(this.processing);
   }
 
   handleDisconnect(socket) {
@@ -118,7 +118,7 @@ class Router {
     });
 
     this.pixels = this.sortByImportance(this.pixels);
-    this.processing = sortByTime(this.processing);
+    this.processing = this.sortByTime(this.processing);
   }
 }
 
