@@ -9,7 +9,7 @@
   <div id="logs"></div>
 
   <script>
-    const socket = new WebSocket('wss://PlaceMaster.overcastschool.repl.co/api/ws');
+    const socket = new WebSocket(location.href.replace("https", "wss").replace("http", "ws") + 'api/ws');
     socket.onopen = () => {
       console.log("Connected to server");
     };
