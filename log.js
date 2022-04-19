@@ -14,6 +14,6 @@ function log(toWrite, noConsole=false) {
 		//log('fefe', true)
 	}
 	if (toWrite.startsWith('JOBS | Checking')) return; // dont log the job checking, it takes up too much space in the log file
-	fs.writeFileSync(`${__dirname}/log.txt`,logs); // write the updated log back to a file
+	fs.writeFileSync(`${__dirname}/log.log`,logs); // write the updated log back to a file
 }
 module.exports = {log}
