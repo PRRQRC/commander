@@ -58,7 +58,7 @@ class Router {
             socket.send(JSON.stringify({ type: "job", data: { pixel: pixel, jobId: id } }));
             this.processing = this.sortByTime(this.processing);
           break;
-          case "finishedJob":
+          case "finishedjob":
             if (!socket.id) return;
             const job = data.jobId;
             this.finish(job);

@@ -9,7 +9,7 @@ const colors = new Colors();
 
 const fs = require("fs");
 
-const map = new Pixels('./data/qr.png', './data/heatmap.png', { x: -513, y: 2780, width: 33, height: 33 });
+const map = new Pixels('./data/qr.png', './data/heatmap.png', { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
 
 map.reload().then((map) => {
   const router = new Router(map, { map: "./data/qr.png", heatmap: "./data/heatmap.png" });
@@ -21,4 +21,8 @@ map.reload().then((map) => {
   fs.writeFile("./data/generated/heatMapData.json", JSON.stringify(importances), (err) => {
     if (err) console.error(err);
   });
+});
+map.on("reload", (map) => {
+  // TODO: Update router
+  // TODO: Maybe update files...
 });
