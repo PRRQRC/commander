@@ -11,12 +11,13 @@ class Router {
     this.app = express();
 
     this.processing = [];
+    this.clients = {};
 
     this.imageData = imageData;
     this.pixels = this.sortByImportance(imageData.pixels.slice());
 
     this.paths = paths;
-    this.imageAnalyzer = new Pixels(paths.map, paths.heatmap);
+    this.imageAnalyzer = new Pixels(paths.map, paths.heatmap, { x: -513, y: 2780, width: 33, height: 33 });
 
     this.server = this.app.listen(process.env.PORT || 3000);
     this.wsServer = new ws.Server({ server: this.server, path: '/api/ws' });
@@ -30,8 +31,6 @@ class Router {
 
     this.wsServer.on('connection', (socket) => {
       console.log("New socket connected");
-
-      socket.id = this.wsServer.getUniqueID();
 
       socket.on("close", () => {
         console.log("Client disconnected; Reassigning jobs...");
@@ -49,6 +48,7 @@ class Router {
 
         switch (data.type.toLowerCase()) {
           case "getjob":
+            if (!socket.id) return;
             const pixel = (this.pixels.length <= 0 && this.processing.length > 0) ? this.processing.data.shift() : this.pixels.shift();
             const id = this.wsServer.getUniqueID();
             if (pixel) this.processing.push({ start: new Date(), data: pixel, id: socket.id, jobId: id });
@@ -56,6 +56,7 @@ class Router {
             this.processing = this.sortByTime(this.processing);
           break;
           case "finishedJob":
+            if (!socket.id) return;
             const job = data.jobId;
             this.finish(job);
             this.processing = this.sortByTime(this.processing);

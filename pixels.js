@@ -3,6 +3,7 @@ const EventEmitter = require('events');
 var sizeOf = require('image-size');
 var Jimp = require('jimp');
 const Scraper = require("pixelcanvas-scraper");
+const EnumColor = require("./colors.js");
 
 class ImportanceAnalyzer {
   constructor(heatmap, color) {
@@ -15,6 +16,8 @@ class ImportanceAnalyzer {
     this.scraper = new Scraper("57406ac14592dae5e720e0e68d0f4583", { x: -513, y: 2780, w: 32, h: 32 });
 
     this.importances = [];
+
+    this.start = new Date();
 
     return this;
   }
@@ -61,20 +64,30 @@ class ImportanceAnalyzer {
     return this.importances;
   }
 
-  update() {
+  update(data) {
     
   }
 }
 
 class Pixels {
-  constructor(file, heatmap) {
+  constructor(file, heatmap, data) {
     this.filePath = file;
     this.heatmap = heatmap;
+    this.data = data;
+
+    this.x = data.x;
+    this.y = data.y;
+    this.width = data.width;
+    this.height = data.height;
 
     this.pixels = [];
+    this.canvas = null;
+    this.map = {};
 
+    this.colors = new EnumColor();
     this.importances = new ImportanceAnalyzer(heatmap, { r: 255, g: 0, b: 0, a: 255});
     this.eventEmitter = new EventEmitter();
+    this.scraper = new Scraper("57406ac14592dae5e720e0e68d0f4583", { x: this.x, y: this.y, w: this.width, h: this.height });
 
     return this;
   }
@@ -123,14 +136,26 @@ class Pixels {
               let color = this.image.getPixelColor(i, j);
               var importance = this.importances.importances.find(el => el.x === i && el.y === j);
               importance = (importance) ? importance.importance : 255;
-              this.pixels.push({ coords: [i, j], color: Jimp.intToRGBA(color), importance: importance });
+              color = Jimp.intToRGBA(color);
+              this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
             }
           }
 
-          this.pixels = this.sortByImportance(this.pixels);
+          //this.pixels = this.sortByImportance(this.pixels);
 
           console.log("Data processed!");
-          res(this);
+          console.log("Analyzing canvas...")
+          this.syncPixelCanvas().then(() => {
+            this.pixels.forEach((pixel, i) => {
+              let x = pixel.absCoords[0];
+              let y = pixel.absCoords[1];
+              if (!this.map[x]) { this.map[x] = {}; }
+              this.map[x][y] = { correct: pixel.converted, color: this.canvas.getColor(x, y), importance: pixel.importance, isWrong: this.isWrong({ coords: [x, y], color: pixel.converted }) };
+            });
+            console.log("Map generated!");
+            
+            res(this);
+          });
         }).catch(e => {
           console.log("Error (Heatmap): ", e);
         });
@@ -140,16 +165,30 @@ class Pixels {
     });
   }
 
+  /*
+  {
+    coords: [x, y],
+    color: Color
+  }
+  */
+  isWrong(pixel) {
+    return !pixel.color.index == this.canvas.matrix[pixel.coords[0]][pixel.coords[1]].index;
+  }
+
   update(data) {
     this.importances.update(data);
+  }
+  convertColor(rgba) {
+    return this.colors.convertColor(rgba);
   }
 
   syncPixelCanvas() {
     return new Promise((res, rej) => {
-      this.scraper.get().then(() => {
+      this.scraper.get().then((canvas) => {
+        this.canvas = canvas;
         this.scraper.connectEventSource();
         this.scraper.on("connectionReady", () => {
-          res(true);
+          res(canvas);
         });
         this.scraper.on("connectionError", (e) => { rej(e); });
         this.scraper.on("update", (data) => {

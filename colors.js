@@ -78,8 +78,18 @@ class EnumColor {
     return this.rgb(diff_min[0]);
   }
 
+  sortByDiff(arr) {
+    return (arr.length <= 1) ? arr : [...this.sortByDiff(arr.slice(1).filter((el) => el[1] <= arr[0][1])), arr[0], ...this.sortByDiff(arr.slice(1).filter(el => el[1] > arr[0][1]))];
+  }
+
   convertColor(rgba) {
-    
+    if (rgba.r || rgba.r === 0) rgba = [ rgba.r, rgba.g, rgba.b]
+    let diffs = [];
+    for (let i = 0; i < this.ENUM.length; i++) {
+      let diff = Math.abs(rgba[0] - this.ENUM[i].rgb[0]) + Math.abs(rgba[1] - this.ENUM[i].rgb[1]) + Math.abs(rgba[2] - this.ENUM[i].rgb[2]);
+      diffs.push([this.ENUM[i].index, diff]);
+    }
+    return this.index(this.sortByDiff(diffs)[0][0]);
   }
 }
 

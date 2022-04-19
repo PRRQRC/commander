@@ -11,8 +11,10 @@
   <script>
     const socket = new WebSocket(location.href.replace("https", "wss").replace("http", "ws") + 'api/ws');
     socket.onopen = () => {
-      console.log("Connected to server");
+      console.log("Connected to server; Waiting for id...");
     };
+
+    var id = null;
 
     function log(msg) {
       var p = document.createElement("p");
@@ -65,7 +67,12 @@
       }
 
       switch (data.type.toLowerCase()) {
+        case "register":
+          id = data.id;
+          console.log("Registered with id: ", id);
+        break;
         case "job":
+          if (!id) return;
           if (!data.data) {
             log("No jobs available... idling");
             return;
@@ -83,6 +90,7 @@
     };
 
     function getPixel() {
+      if (!id) return alert("Still registering on server!");
       socket.send(JSON.stringify({ type: "getJob" }));
     }
   </script>
