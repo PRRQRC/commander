@@ -12,14 +12,22 @@ class ImportanceAnalyzer {
 
     this.colored = [];
     this.pixels = [];
+    this.changeRates = [];
 
     this.scraper = new Scraper("57406ac14592dae5e720e0e68d0f4583", { x: -513, y: 2780, w: 32, h: 32 });
+    this.eventEmitter = new EventEmitter();
 
     this.importances = [];
 
     this.start = new Date();
 
     return this;
+  }
+  on(event, callback) {
+    this.eventEmitter.on(event, callback);
+  }
+  once(event, callback) {
+    this.eventEmitter.once(event, callback);
   }
 
   reload() {
@@ -153,7 +161,6 @@ class Pixels {
               this.map[x][y] = { correct: pixel.converted, color: this.canvas.getColor(x, y), importance: pixel.importance, isWrong: this.isWrong({ coords: [x, y], color: pixel.converted }) };
             });
             console.log("Map generated!");
-            
             res(this);
           });
         }).catch(e => {

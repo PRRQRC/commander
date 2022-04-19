@@ -37,6 +37,9 @@ class Router {
         this.handleDisconnect(socket);
       });
 
+      socket.id = this.wsServer.getUniqueID();
+      socket.send(JSON.stringify({ type: "register", id: socket.id }));
+
       socket.on("message", (msg) => {
         var data;
         try {
