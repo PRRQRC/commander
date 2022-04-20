@@ -16,13 +16,16 @@ class ImportanceAnalyzer {
     this.pixels = [];
     this.changeRates = [];
 
-
-    this.scraper = new Scraper(this.opts.fingerprint, { x: -513, y: 2780, w: 32, h: 32 });
+    this.scraper = new Scraper(this.opts.fingerprint, { x: this.opts.x, y: this.opts.y, w: 32, h: 32 });
     this.eventEmitter = new EventEmitter();
 
     this.importances = [];
 
     this.start = new Date();
+
+    setInterval(() => {
+      this.rateUpdate((new Date()).getTime() - this.start.getTime());
+    }, 2000);
 
     return this;
   }
@@ -78,24 +81,58 @@ class ImportanceAnalyzer {
     return this.importances;
   }
   rateSorter(a, b) {
+    if (a.rate > b.rate) { return -1; }
+    if (a.rate < b.rate) { return 1; }
+    return 0;
+  }
+  rateSorterReversed(a, b) {
     if (a.rate < b.rate) { return -1; }
     if (a.rate > b.rate) { return 1; }
     return 0;
   }
+  
+  rateUpdate(time) {
+    this.changeRates = this.changeRates.map(el => { el.rate = el.changes / time; el.time = time; return el; });
+  }
 
+  computeRateImportances() {
+    return this.changeRates.map((el, i) => { el.importance = i; return el; });
+  }
   update(data) {
-    let time = this.start.getTime() - (new Date()).getTime();
-    if (!this.changeRates.find(el => el.x === data.x && el.y === data.y)) { this.changeRates.push({ time: time, x: data.x, y: data.y, changes: 1, rate: 1/time }); return;}
-    let index = this.changeRates.findIndex(el => el.x === data.x && el.y === data.y);
-    let changes = ++this.changeRates[index].changes;
-    this.changeRates[index].rate = changes / time;
+    let time = (new Date()).getTime() - this.start.getTime();
+    let x = data.x - this.opts.x;
+    let y = data.y - this.opts.y;
+    if (!this.changeRates.find(el => el.x === x && el.y === y)) {
+      this.changeRates.push({ time: time, x: x, y: y, changes: 1, rate: 1/time });
+    } else {
+      let index = this.changeRates.findIndex(el => el.x === x && el.y === y);
+      let changes = ++this.changeRates[index].changes;
+      this.changeRates[index].rate = changes / time;
+      console.log(time, changes / time);
+    }
     /*if (Math.max(...this.changeRates.map(el => el.rate)) == this.changeRates[index].rate) {
-      Had an idea but forgot it... left the code if it returns :>
+        // Had an idea but forgot it... left the code if it returns :>
     }*/
     this.changeRates.sort(this.rateSorter);
 
-    // TODO: importance analysis
-
+    // TODO: implement more efficient update algorithm
+    /*
+    for example:
+      - just update the rates "below" the changed rate
+    */
+    let rateImps = this.computeRateImportances();
+    for (let i = 0; i < rateImps.length; i++) {
+      let index = this.importances.findIndex(el => el.x == rateImps[i].x && el.y == rateImps[i].y);
+      if (index == -1) {
+        this.importances.push({ x: rateImps[i].x, y: rateImps[i].y, importance: 255 + rateImps[i].importance, rateImp: rateImps[i].importance });
+        continue;
+      }
+      if (!this.importances[index].rateImp) this.importances[index].rateImp = 0;
+      let oldRateImp = this.importances[index].rateImp;
+      this.importances[index].rateImp = rateImps[i].importance;
+      this.importances[index].importance -= oldRateImp;
+      this.importances[index].importance += rateImps[i].importance;
+    };
     
     this.eventEmitter.emit("importanceUpdate", this.importances);
     return;
@@ -119,9 +156,14 @@ class Pixels {
     this.map = {};
 
     this.colors = new EnumColor();
-    this.importances = new ImportanceAnalyzer(heatmap, { r: 255, g: 0, b: 0, a: 255}, { fingerprint: this.fingerprint });
+    this.importances = new ImportanceAnalyzer(heatmap, { r: 255, g: 0, b: 0, a: 255}, { fingerprint: this.fingerprint, x: this.x, y: this.y });
     this.eventEmitter = new EventEmitter();
     this.scraper = new Scraper(this.fingerprint, { x: this.x, y: this.y, w: this.width, h: this.height });
+
+    this.importances.eventEmitter.on("importanceUpdate", (importances) => {
+      console.log("Importances updated! Importances > 0: ", importances.filter(el => el.importance > 0));
+      // TODO: process importances
+    });
 
     return this;
   }
@@ -187,6 +229,13 @@ class Pixels {
               this.map[x][y] = { correct: pixel.converted, color: this.canvas.getColor(x, y), importance: pixel.importance, isWrong: this.isWrong({ coords: [x, y], color: pixel.converted }) };
             });
             console.log("Map generated!");
+
+            console.log(JSON.stringify(this.important.filter(el => el.x == 2)));
+
+            /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
+            this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
+            this.update(JSON.parse('{"x":-511,"y":2783,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));*/
+
             res(this);
             if (isReconnect) { this.eventEmitter.emit("reload", this); }
           });
@@ -210,6 +259,7 @@ class Pixels {
   }
 
   update(data) {
+    if (this.isWrong({ coords: [data.x, data.y], color: data.color })) this.map[data.x][data.y].isWrong = true;
     this.importances.update(data);
   }
   convertColor(rgba) {
@@ -233,6 +283,7 @@ class Pixels {
           rej(e);
         });
         this.scraper.on("update", (data) => {
+          console.log("Canvas updated: ", data);
           this.update(data);
         });
       });

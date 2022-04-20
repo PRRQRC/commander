@@ -22,7 +22,7 @@ map.reload().then((map) => {
     if (err) console.error(err);
   });
 });
-map.on("reload", (map) => {
+map.on("reload", (map) => { // occurs when the map is reloaded due to a reconnect of the eventStream
   // TODO: Update router
   // TODO: Maybe update files...
 });
