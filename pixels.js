@@ -1,9 +1,9 @@
 // module to analyze maps, problems, priorities, etc.
-const { throws } = require('assert');
 const EventEmitter = require('events');
 var sizeOf = require('image-size');
 var Jimp = require('jimp');
 const Scraper = require("pixelcanvas-scraper");
+const { setTimeout } = require('timers/promises');
 const EnumColor = require("./colors.js");
 
 class ImportanceAnalyzer {
@@ -16,7 +16,7 @@ class ImportanceAnalyzer {
     this.pixels = [];
     this.changeRates = [];
 
-    this.scraper = new Scraper(this.opts.fingerprint, { x: this.opts.x, y: this.opts.y, w: 32, h: 32 });
+    this.scraper = new Scraper(this.opts.fingerprint, { x: this.opts.x, y: this.opts.y, w: this.opts.w, h: this.opts.hs });
     this.eventEmitter = new EventEmitter();
 
     this.importances = [];
@@ -70,14 +70,26 @@ class ImportanceAnalyzer {
   sortByImportance(arr) {
     return (arr.length <= 1) ? arr : [...this.sortByImportance(arr.slice(1).filter((el) => el.importance <= arr[0].importance)), arr[0], ...this.sortByImportance(arr.slice(1).filter(el => el.importance > arr[0].importance))];
   }
-  getImportant() {
+
+  importanceSorter(a, b) { // bigger first
+    if (a.importance > b.importance) { return -1; }
+    if (a.importance < b.importance) { return 1; }
+    return 0;
+  }
+  importanceSorterReversed(a, b) { // smaller first
+    if (a.importance < b.importance) { return -1; }
+    if (a.importance > b.importance) { return 1; }
+    return 0;
+  }
+
+  getImportantByHeatmap() {
     if (!this.colored.length) { return []; }
     this.colored.forEach((pixel, i) => {
       let color = Jimp.intToRGBA(pixel.color);
-      let importance = Math.abs(color.r - this.color.r) + Math.abs(color.g - this.color.g) + Math.abs(color.b - this.color.b);
-      this.importances.push({ x: pixel.x, y: pixel.y, importance: importance });
+      let importance = 255 - (Math.abs(color.r - this.color.r) + Math.abs(color.g - this.color.g) + Math.abs(color.b - this.color.b));
+      this.importances.push({ x: pixel.x, y: pixel.y, importance: importance, heatmapImp: importance });
     });
-    this.importances = this.sortByImportance(this.importances);
+    this.importances.sort(this.importanceSorter);
     return this.importances;
   }
   rateSorter(a, b) {
@@ -113,7 +125,7 @@ class ImportanceAnalyzer {
     /*if (Math.max(...this.changeRates.map(el => el.rate)) == this.changeRates[index].rate) {
         // Had an idea but forgot it... left the code if it returns :>
     }*/
-    this.changeRates.sort(this.rateSorter);
+    this.changeRates.sort(this.rateSorterReversed);
 
     // TODO: implement more efficient update algorithm
     /*
@@ -155,8 +167,12 @@ class Pixels {
     this.canvas = null;
     this.map = {};
 
+    this.lastReload = new Date();
+    this.reloading = false;
+    this.scheduledReload = false;
+
     this.colors = new EnumColor();
-    this.importances = new ImportanceAnalyzer(heatmap, { r: 255, g: 0, b: 0, a: 255}, { fingerprint: this.fingerprint, x: this.x, y: this.y });
+    this.importances = new ImportanceAnalyzer(heatmap, { r: 255, g: 0, b: 0, a: 255}, { fingerprint: this.fingerprint, x: this.x, y: this.y, w: this.width, h: this.height });
     this.eventEmitter = new EventEmitter();
     this.scraper = new Scraper(this.fingerprint, { x: this.x, y: this.y, w: this.width, h: this.height });
 
@@ -184,11 +200,12 @@ class Pixels {
     });
   }
 
-  sortByImportance(arr) {
-    return (arr.length <= 1) ? arr : [...this.sortByImportance(arr.slice(1).filter((el) => el.importance <= arr[0].importance)), arr[0], ...this.sortByImportance(arr.slice(1).filter(el => el.importance > arr[0].importance))];
+  getNextPixel() {
+
   }
 
   reload(isReconnect) {
+    this.reloading = true;
     return new Promise(async (res, rej) => {
       this.pixels = [];
       console.log("Loading image...");
@@ -205,13 +222,13 @@ class Pixels {
 
         this.importances.reload().then(() => {
           console.log("heatmap analyzed! Processing...");
-          this.important = this.importances.getImportant();
+          this.important = this.importances.getImportantByHeatmap();
 
           for (let i = 0; i < this.width; i++) {
             for (let j = 0; j < this.height; j++) {
               let color = this.image.getPixelColor(i, j);
               var importance = this.importances.importances.find(el => el.x === i && el.y === j);
-              importance = (importance) ? importance.importance : 255;
+              importance = (importance) ? importance.importance : 0;
               color = Jimp.intToRGBA(color);
               this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
             }
@@ -230,13 +247,17 @@ class Pixels {
             });
             console.log("Map generated!");
 
-            console.log(JSON.stringify(this.important.filter(el => el.x == 2)));
-
             /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
             this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
             this.update(JSON.parse('{"x":-511,"y":2783,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));*/
 
             res(this);
+            this.reloading = false;
+            this.lastReload = new Date();
+            if (this.scheduledReload) {
+              this.scheduledReload = false;
+              this.reload(true);
+            }
             if (isReconnect) { this.eventEmitter.emit("reload", this); }
           });
         }).catch(e => {
@@ -273,13 +294,26 @@ class Pixels {
         this.scraper.connectEventSource();
         let isInit = true;
         this.scraper.on("connectionReady", () => {
-          if (!isInit) { this.reload(true); }
+          if (!isInit) {
+            if (this.reloading) {
+              this.scheduledReload = true;
+              return;
+            }
+            if (this.lastReload.getTime() + 1000 < (new Date()).getTime() && !this.scheduledReload && !this.reloading) {
+              (async () => {
+                this.scheduledReload = true;
+                setTimeout(() => {
+                  this.reload(true);
+                }, 2000);
+              })();
+            }
+          }
           isInit = false;
           res(canvas);
         });
         this.scraper.on("connectionError", (e) => { 
           console.log("Error: ", e);
-          console.warn("Connection to EventStream lost, reloading after reconnect!")
+          console.warn("Connection to EventStream lost, scheduling reload after reconnect!")
           rej(e);
         });
         this.scraper.on("update", (data) => {
