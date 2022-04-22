@@ -4,7 +4,9 @@ var sizeOf = require('image-size');
 var Jimp = require('jimp');
 const Scraper = require("pixelcanvas-scraper");
 const { setTimeout } = require('timers/promises');
+const { Worker } = require("worker_threads");
 const EnumColor = require("./colors.js");
+const fs = require("fs");
 
 class ImportanceAnalyzer {
   constructor(heatmap, color, opts) {
@@ -107,8 +109,19 @@ class ImportanceAnalyzer {
     this.changeRates = this.changeRates.map(el => { el.rate = el.changes / time; el.time = time; return el; });
   }
 
+  loadBackup(file) {
+    return new Promise((res, rej) => {
+      fs.readFile(file, (err, data) => {
+        if (err) { rej(err); return; }
+        this.importances = JSON.parse(data);
+        //this.eventEmitter.emit("importanceUpdate", this.importances);
+        res(this.importances);
+      });
+    });
+  }
+
   computeRateImportances() {
-    return this.changeRates.map((el, i) => { el.importance = i; return el; });
+    return this.changeRates.map((el, i) => { el.importance = (i + 1); return el; });
   }
   update(data) {
     let time = (new Date()).getTime() - this.start.getTime();
@@ -152,10 +165,18 @@ class ImportanceAnalyzer {
 }
 
 class Pixels {
-  constructor(file, heatmap, data) {
+  constructor(files, data) {
+    let file = files.file;
+    let heatmap = files.heatmap;
+    let saves = files.backupFile;
+
+    this.files = files;
     this.filePath = file;
     this.heatmap = heatmap;
     this.data = data;
+    this.save = saves;
+
+
 
     this.x = data.x;
     this.y = data.y;
@@ -164,6 +185,7 @@ class Pixels {
     this.fingerprint = data.fingerprint;
 
     this.pixels = [];
+    this.jobs = [];
     this.canvas = null;
     this.map = {};
 
@@ -175,10 +197,23 @@ class Pixels {
     this.importances = new ImportanceAnalyzer(heatmap, { r: 255, g: 0, b: 0, a: 255}, { fingerprint: this.fingerprint, x: this.x, y: this.y, w: this.width, h: this.height });
     this.eventEmitter = new EventEmitter();
     this.scraper = new Scraper(this.fingerprint, { x: this.x, y: this.y, w: this.width, h: this.height });
+    this.worker = new Worker("./worker/backupData.js", {});
+    this.worker.onmessage = (e) => {
+      console.log("An error occured while saving the data:", e);
+    };
 
     this.importances.eventEmitter.on("importanceUpdate", (importances) => {
-      console.log("Importances updated! Importances > 0: ", importances.filter(el => el.importance > 0));
-      // TODO: process importances
+      importances.forEach(importance => {
+        let x = importance.x;
+        let y = importance.y;
+
+        let pixel = this.pixels.findIndex(el => el.coords[0] === x && el.coords[1] === y);
+        if (pixel === -1) { console.log("Something fishy is going on! <importances.on('importanceUpdate') in class Pixels>"); return; }
+        this.pixels[pixel].importance = importance.importance;
+        this.map[this.x + x][this.y + y].importance = importance.importance;
+      });
+      this.jobs = this.pixels.slice().sort(this.importances.importanceSorter).filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
+      this.worker.postMessage({ data: importances, path: this.save }); // save to file using a worker
     });
 
     return this;
@@ -200,14 +235,11 @@ class Pixels {
     });
   }
 
-  getNextPixel() {
-
-  }
-
   reload(isReconnect) {
     this.reloading = true;
     return new Promise(async (res, rej) => {
       this.pixels = [];
+      this.map = {};
       console.log("Loading image...");
       Jimp.read(this.filePath, (err, image) => {
         if (err) { rej(err); return; }
@@ -233,33 +265,37 @@ class Pixels {
               this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
             }
           }
-
+          
           //this.pixels = this.sortByImportance(this.pixels);
-
+          
           console.log("Data processed!");
           console.log("Analyzing canvas...")
-          this.syncPixelCanvas().then(() => {
-            this.pixels.forEach((pixel, i) => {
-              let x = pixel.absCoords[0];
-              let y = pixel.absCoords[1];
-              if (!this.map[x]) { this.map[x] = {}; }
-              this.map[x][y] = { correct: pixel.converted, color: this.canvas.getColor(x, y), importance: pixel.importance, isWrong: this.isWrong({ coords: [x, y], color: pixel.converted }) };
+          this.importances.loadBackup(this.save).then(() => {
+            this.syncPixelCanvas(isReconnect).then(() => {
+              this.pixels.forEach((pixel, i) => {
+                let x = pixel.absCoords[0];
+                let y = pixel.absCoords[1];
+                if (!this.map[x]) { this.map[x] = {}; }
+                this.map[x][y] = { correct: pixel.converted, color: this.canvas.getColor(x, y), importance: pixel.importance, isWrong: this.isWrong({ coords: [x, y], color: pixel.converted }) };
+              });
+              console.log("Map generated!");
+
+              this.jobs = this.pixels.slice().sort(this.importances.importanceSorter).filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
+
+              /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
+              this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
+              this.update(JSON.parse('{"x":-511,"y":2783,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));*/
+
+              res(this);
+              this.reloading = false;
+              this.lastReload = new Date();
+              if (this.scheduledReload) {
+                this.scheduledReload = false;
+                this.reload(true);
+              }
+              if (isReconnect) { this.eventEmitter.emit("reload", this); }
             });
-            console.log("Map generated!");
-
-            /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
-            this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
-            this.update(JSON.parse('{"x":-511,"y":2783,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));*/
-
-            res(this);
-            this.reloading = false;
-            this.lastReload = new Date();
-            if (this.scheduledReload) {
-              this.scheduledReload = false;
-              this.reload(true);
-            }
-            if (isReconnect) { this.eventEmitter.emit("reload", this); }
-          });
+          }).catch((err) => console.log(err));
         }).catch(e => {
           console.log("Error (Heatmap): ", e);
         });
@@ -280,17 +316,28 @@ class Pixels {
   }
 
   update(data) {
-    if (this.isWrong({ coords: [data.x, data.y], color: data.color })) this.map[data.x][data.y].isWrong = true;
+    let isWrong = this.isWrong({ coords: [data.x, data.y], color: data.color });
+    this.map[data.x][data.y].isWrong = isWrong;
+    let job = this.jobs.find(el => el.absCoords[0] === data.x && el.absCoords[1] === data.y)
+    if (job) job.isWrong = isWrong;
     this.importances.update(data);
+    this.eventEmitter.emit("update", this.jobs);
   }
   convertColor(rgba) {
     return this.colors.convertColor(rgba);
   }
+  importanceSorter(a, b) { // bigger first
+    if (a.importance > b.importance) { return -1; }
+    if (a.importance < b.importance) { return 1; }
+    return 0;
+  }
 
-  syncPixelCanvas() {
+  syncPixelCanvas(recon) {
+    if (recon) return new Promise((res, rej) => res());
     return new Promise((res, rej) => {
       this.scraper.get().then((canvas) => {
         this.canvas = canvas;
+        if (recon) return; // only fetch canvas on reconnect
         this.scraper.connectEventSource();
         let isInit = true;
         this.scraper.on("connectionReady", () => {
