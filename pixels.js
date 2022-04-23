@@ -269,8 +269,10 @@ class Pixels {
           //this.pixels = this.sortByImportance(this.pixels);
           
           console.log("Data processed!");
-          console.log("Analyzing canvas...")
+          console.log("Loading importance backup...");
           this.importances.loadBackup(this.save).then(() => {
+            console.log("Importance backup loaded!");
+            console.log("Analyzing canvas...")
             this.syncPixelCanvas(isReconnect).then(() => {
               this.pixels.forEach((pixel, i) => {
                 let x = pixel.absCoords[0];
