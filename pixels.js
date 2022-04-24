@@ -113,8 +113,8 @@ class ImportanceAnalyzer {
     return new Promise((res, rej) => {
       fs.readFile(file, (err, data) => {
         if (err) { rej(err); return; }
-        this.importances = JSON.parse(data).importances;
-        this.changeRates = JSON.parse(data).changeRates;
+        this.importances = (JSON.parse(data).importances) ? JSON.parse(data).importances : [];
+        this.changeRates = (JSON.parse(data).changeRates) ? JSON.parse(data).changeRates : [];
         //this.eventEmitter.emit("importanceUpdate", this.importances);
         res(this.importances);
       });
