@@ -18,6 +18,9 @@ class Router {
 
     this.paths = paths;
     this.imageAnalyzer = new Pixels({ file: paths.map, heatmap: paths.heatmap, backupFile: paths.backups }, { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
+    this.imageAnalyzer.on("update", (job) => {
+      // TODO: job updates
+    });
 
     this.server = this.app.listen(process.env.PORT || 3000);
     this.wsServer = new ws.Server({ server: this.server, path: '/api/ws' });
@@ -39,6 +42,8 @@ class Router {
 
       socket.id = this.wsServer.getUniqueID();
       socket.send(JSON.stringify({ type: "register", id: socket.id }));
+
+      // TODO: remake this sh*t
 
       socket.on("message", (msg) => {
         var data;

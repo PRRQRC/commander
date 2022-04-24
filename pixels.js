@@ -109,11 +109,12 @@ class ImportanceAnalyzer {
     this.changeRates = this.changeRates.map(el => { el.rate = el.changes / time; el.time = time; return el; });
   }
 
-  loadBackup(file) {
+  loadBackup(file) { // TODO: Backup start time too (rates)
     return new Promise((res, rej) => {
       fs.readFile(file, (err, data) => {
         if (err) { rej(err); return; }
-        this.importances = JSON.parse(data);
+        this.importances = JSON.parse(data).importances;
+        this.changeRates = JSON.parse(data).changeRates;
         //this.eventEmitter.emit("importanceUpdate", this.importances);
         res(this.importances);
       });
@@ -213,7 +214,7 @@ class Pixels {
         this.map[this.x + x][this.y + y].importance = importance.importance;
       });
       this.jobs = this.pixels.slice().sort(this.importances.importanceSorter).filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
-      this.worker.postMessage({ data: importances, path: this.save }); // save to file using a worker
+      this.worker.postMessage({ data: { importances: importances, rates: this.importances.changeRates }, path: this.save }); // save to file using a worker
     });
 
     return this;
@@ -320,10 +321,12 @@ class Pixels {
   update(data) {
     let isWrong = this.isWrong({ coords: [data.x, data.y], color: data.color });
     this.map[data.x][data.y].isWrong = isWrong;
-    let job = this.jobs.find(el => el.absCoords[0] === data.x && el.absCoords[1] === data.y)
-    if (job) job.isWrong = isWrong;
+    let job = this.jobs.findIndex(el => el.absCoords[0] === data.x && el.absCoords[1] === data.y)
+    let wrong = his.jobs[job].isWrong;
+    if (job) this.jobs[job].isWrong = isWrong;
+    this.jobs = this.jobs.filter(el => el.isWrong == true || el.isWrong == undefined);
     this.importances.update(data);
-    this.eventEmitter.emit("update", this.jobs);
+    if (wrong != isWrong && isWrong == true) this.eventEmitter.emit("update", this.jobs[job]);
   }
   convertColor(rgba) {
     return this.colors.convertColor(rgba);
