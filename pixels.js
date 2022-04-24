@@ -111,10 +111,11 @@ class ImportanceAnalyzer {
 
   loadBackup(file) { // TODO: Backup start time too (rates)
     return new Promise((res, rej) => {
-      fs.readFile(file, (err, data) => {
+      fs.readFile(file, "utf8", (err, data) => {
         if (err) { rej(err); return; }
-        this.importances = (JSON.parse(data).importances) ? JSON.parse(data).importances : [];
-        this.changeRates = (JSON.parse(data).changeRates) ? JSON.parse(data).changeRates : [];
+        if (JSON.parse(data).version == 1) { this.importances = JSON.parse(data).data; res(this.importances); return; }
+        this.importances = (JSON.parse(data).data.importances) ? JSON.parse(data).data.importances : [];
+        this.changeRates = (JSON.parse(data).data.changeRates) ? JSON.parse(data).data.changeRates : [];
         //this.eventEmitter.emit("importanceUpdate", this.importances);
         res(this.importances);
       });
@@ -214,7 +215,7 @@ class Pixels {
         this.map[this.x + x][this.y + y].importance = importance.importance;
       });
       this.jobs = this.pixels.slice().sort(this.importances.importanceSorter).filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
-      this.worker.postMessage({ data: { importances: importances, rates: this.importances.changeRates }, path: this.save }); // save to file using a worker
+      this.worker.postMessage({ backup: { version: 2, data: { importances: importances, rates: this.importances.changeRates } }, path: this.save }); // save to file using a worker
     });
 
     return this;
