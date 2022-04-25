@@ -1,14 +1,12 @@
 const express = require("express");
 const { URLSearchParams } = require("url");
 const path = require("path");
-const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 const fs = require("fs");
+const bodyParser = require("body-parser");
 
 const { clientId, clientSecret, port } = require("./config.json");
 const { users } = require("./authenticated.json");
-
-const client_secret = process.env['secret']
 
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
@@ -34,6 +32,8 @@ function getUUID() {
   }
   return s4() + s4() + '-' + s4();
 };
+
+const tempIds = new Map();
 
 app.get('/auth', async ({ query }, response) => {
   const { code } = query;
@@ -87,6 +87,19 @@ app.get('/auth', async ({ query }, response) => {
     }
   } catch (e) {
     console.log(e);
+  }
+});
+
+app.get("/api/tempauth/:t", (req, res) => {
+  const permaToken = req.params.t;
+  const index = users.findIndex(el => el.botToken === permaToken);
+  if (index === -1) return res.send(JSON.stringify({ botToken: permaToken, error: "invalid token" }));
+  if (tempIds.has(permaToken)) {
+    return res.send(JSON.stringify({ botToken: permaToken, token: tempIds.get(permaToken) }));
+  } else {
+    const token = getUUID();
+    tempIds.set(permaToken, token);
+    return res.send(JSON.stringify({ botToken: permaToken, token: token }));
   }
 });
 
