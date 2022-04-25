@@ -1,0 +1,41 @@
+<html lang='en'>
+
+<head>
+  <meta charset='utf-8' />
+  <title>Discord OAUTH</title>
+  <style>
+    * {
+      text-align: center;
+      margin: 0px auto;
+    }
+
+    #welcome_txt {
+      font-size: 24px;
+    }
+
+    #login-link {
+      background-color: whitesmoke;
+      border-radius: 8px;
+      color: black;
+      padding: 15px 30px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 20px;
+    }
+
+    #login-link:hover {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <br>
+  <a id='login-link'
+    href='https://discord.com/api/oauth2/authorize?client_id=967841618436694036&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fauth&response_type=code&scope=identify'>Login
+    with Discord</a><br><br>
+  <p id='message'></p>
+</body>
+
+</html>

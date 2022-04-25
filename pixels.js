@@ -323,7 +323,7 @@ class Pixels {
     let isWrong = this.isWrong({ coords: [data.x, data.y], color: data.color });
     this.map[data.x][data.y].isWrong = isWrong;
     let job = this.jobs.findIndex(el => el.absCoords[0] === data.x && el.absCoords[1] === data.y)
-    let wrong = his.jobs[job].isWrong;
+    let wrong = this.jobs[job].isWrong;
     if (job) this.jobs[job].isWrong = isWrong;
     this.jobs = this.jobs.filter(el => el.isWrong == true || el.isWrong == undefined);
     this.importances.update(data);
