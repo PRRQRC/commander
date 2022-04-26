@@ -15,11 +15,12 @@ class Router {
 
     this.imageData = imageData;
     this.pixels = this.sortByImportance(imageData.pixels.slice());
+    this.jobs = [];
 
     this.paths = paths;
     this.imageAnalyzer = new Pixels({ file: paths.map, heatmap: paths.heatmap, backupFile: paths.backups }, { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
     this.imageAnalyzer.on("update", (job) => {
-      // TODO: job updates
+      console.log("Wrong pixel placed!");
     });
 
     this.server = this.app.listen(process.env.PORT || 3000);
@@ -55,22 +56,11 @@ class Router {
         }
 
         switch (data.type.toLowerCase()) {
-          case "getjob":
-            if (!socket.id) return;
-            const pixel = (this.pixels.length <= 0 && this.processing.length > 0) ? this.processing.data.shift() : this.pixels.shift();
-            const id = this.wsServer.getUniqueID();
-            if (pixel) this.processing.push({ start: new Date(), data: pixel, id: socket.id, jobId: id });
-            socket.send(JSON.stringify({ type: "job", data: { pixel: pixel, jobId: id } }));
-            this.processing = this.sortByTime(this.processing);
-          break;
-          case "finishedjob":
-            if (!socket.id) return;
-            const job = data.jobId;
-            this.finish(job);
-            this.processing = this.sortByTime(this.processing);
+          case "": 
+
           break;
           default:
-            console.log("Suspicious case...", data);
+
           break;
         }
       });
