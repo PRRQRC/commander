@@ -21,7 +21,6 @@ class Router {
     this.imageAnalyzer = new Pixels({ file: paths.map, heatmap: paths.heatmap, backupFile: paths.backups }, { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
     this.imageAnalyzer.on("update", (job) => {
       console.log("Wrong pixel placed!");
-      
     });
 
     this.server = this.app.listen(process.env.PORT || 3000);
