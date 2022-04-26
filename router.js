@@ -23,6 +23,8 @@ class Router {
       console.log("Wrong pixel placed!");
     });
 
+    this.connectionToken = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
+
     this.server = this.app.listen(process.env.PORT || 3000);
     this.wsServer = new ws.Server({ server: this.server, path: '/api/ws' });
 
@@ -38,11 +40,14 @@ class Router {
 
       socket.on("close", () => {
         console.log("Client disconnected; Reassigning jobs...");
-        this.handleDisconnect(socket);
       });
 
+      setTimeout(() => {
+        if (socket.authenticated) return;
+        closeConnection(socket);
+      }, 3000);
+
       socket.id = this.wsServer.getUniqueID();
-      socket.send(JSON.stringify({ type: "register", id: socket.id }));
 
       // TODO: remake this sh*t
 
@@ -56,8 +61,12 @@ class Router {
         }
 
         switch (data.type.toLowerCase()) {
-          case "": 
-
+          case "auth": 
+            if (data.token == this.connectionToken) {
+              socket.authenticated == true;
+            } else {
+              this.closeConnection(socket);
+            }
           break;
           default:
 
@@ -76,7 +85,17 @@ class Router {
 
     return this;
   }
-  
+ 
+  closeConnection(socket) {
+    socket.close();
+
+    process.nextTick(() => {
+      if ([socket.OPEN, socket.CLOSING].includes(socket.readyState)) {
+        socket.terminate();
+      }
+    });
+  }
+
   sortByTime(arr) {
     return (arr.length <= 1) ? arr : [...this.sortByTime(arr.slice(1).filter((el) => el.start.getTime() >= arr[0].start.getTime())), arr[0], ...this.sortByTime(arr.slice(1).filter(el => el.start.getTime() < arr[0].start.getTime()))];
   }
