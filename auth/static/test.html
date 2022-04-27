@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Test</h1>
+      
+    <button onclick='socket.send(JSON.stringify({ action: "ping" }))'>Ping</button>
+
+  <script>
+    const socket = new WebSocket(location.href.replace("https", "wss").replace("http", "ws").replace("test", "") + 'api/ws/19bf169b-5069', ["19bf169b-5069"]);
+    socket.onopen = () => {
+      console.log("Connected");
+    };
+    socket.onclose = () => {
+      console.error("Closed connection!");
+    };
+    socket.onerror = (e) => {
+      console.log("Error: ", e);
+    };
+
+    socket.onmessage = (e) => {
+      console.log("Message: ", JSON.parse(e.data));
+    };
+  </script>
+</body>
+</html>

@@ -1,11 +1,13 @@
+const expressWs = require('express-ws');
 const express = require("express");
 const { URLSearchParams } = require("url");
 const path = require("path");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const bodyParser = require("body-parser");
+const WebSocket = require("ws");
 
-const { clientId, clientSecret, port } = require("./config.json");
+const { clientId, clientSecret, mainSocket } = require("./config.json");
 const { users } = require("./authenticated.json");
 
 const jsdom = require("jsdom");
@@ -25,6 +27,66 @@ function config(authtoken) {
   };
   return data;
 };
+
+/*wsHttpServer.on("upgrade", (req, socket, head) => {
+const auth = req.headers["sec-websocket-protocol"];
+if (users.findIndex(el => el.botToken == auth) === -1) {
+  // dunno how to do close the connection :(
+    return;
+  }
+});*/
+ 
+const Token = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
+const mainServer = new WebSocket(mainSocket + Buffer.from(Token).toString("base64"));
+mainServer.on("open", () => {
+  console.log("Connection to Commander Astley established!");
+});
+mainServer.on("close", (e) => {
+  console.log("Connection lost!", e);
+})
+  
+expressWs(app);
+app.ws("/api/ws/:t", (socket, req) => {
+  // req.params.t; alternative to middle-ware
+  const auth = req.params.t;
+  if (users.findIndex(el => el.botToken == auth) === -1) {
+    socket.close();
+    setTimeout(() => {
+      if ([socket.OPEN, socket.CLOSING].includes(socket.readyState)) {
+        socket.terminate();
+      }
+    }, 10000);
+    return;
+  }
+
+  socket.on("message", (data) => {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      socket.send(JSON.stringify({ type: "error", error: "Invalid JSON" }));
+      return;
+    }
+
+    switch (data.action.toLowerCase()) {
+      case "ping":
+        socket.send(JSON.stringify({ type: "pong" }));
+      break;
+      default:
+        socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));
+      break;
+    }
+  });
+});
+
+
+
+app.get("/test", (req, res) => {
+  res.sendFile(__dirname + "/static/test.html");
+});
+
+app.on("upgrade", () => {
+  console.log("upgrade");
+});
 
 function getUUID() {
   function s4() {
@@ -90,7 +152,7 @@ app.get('/auth', async ({ query }, response) => {
   }
 });
 
-app.get("/api/tempauth/:t", (req, res) => {
+app.get("/api/tempauth/:t", (req, res) => { // just ignore it pls for now
   const permaToken = req.params.t;
   const index = users.findIndex(el => el.botToken === permaToken);
   if (index === -1) return res.send(JSON.stringify({ botToken: permaToken, error: "invalid token" }));
@@ -102,6 +164,8 @@ app.get("/api/tempauth/:t", (req, res) => {
     return res.send(JSON.stringify({ botToken: permaToken, token: token }));
   }
 });
+
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname + '/static/index.html'))

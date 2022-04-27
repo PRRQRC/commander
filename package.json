@@ -12,6 +12,7 @@
     "axios": "^0.26.1",
     "body-parser": "^1.20.0",
     "express": "^4.17.3",
+    "express-ws": "^5.0.2",
     "image-size": "^1.0.1",
     "jimp": "^0.16.1",
     "jsdom": "^19.0.0",

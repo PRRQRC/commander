@@ -1,6 +1,7 @@
 const ws = require("ws");
 const express = require("express");
 const fs = require("fs");
+const http = require("http");
 
 const Pixels = require("./pixels.js");
 
@@ -22,70 +23,65 @@ class Router {
     this.imageAnalyzer.on("update", (job) => {
       console.log("Wrong pixel placed!");
     });
-
+    
     this.connectionToken = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
-
-    this.server = this.app.listen(process.env.PORT || 3000);
-    this.wsServer = new ws.Server({ server: this.server, path: '/api/ws' });
-
-    this.wsServer.getUniqueID = function () {
-      function s4() {
-        return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    this.expressWs = require('express-ws')(this.app);
+    
+    this.app.ws("/api/ws/:t", (socket, req) => {
+      console.log("something connected");
+      
+      const auth = Buffer.from(req.params.t, "base64").toString();
+      console.log(auth);
+      if (this.connectionToken != auth) {
+        //socket.close();
+        setTimeout(() => {
+          if ([socket.OPEN, socket.CLOSING].includes(socket.readyState)) {
+            //socket.terminate();
+          }
+        }, 10000);
+        //return;
       }
-      return s4() + s4() + '-' + s4();
-    };
-
-    this.wsServer.on('connection', (socket) => {
-      console.log("New socket connected");
-
-      socket.on("close", () => {
-        console.log("Client disconnected; Reassigning jobs...");
-      });
-
-      setTimeout(() => {
-        if (socket.authenticated) return;
-        closeConnection(socket);
-      }, 3000);
-
-      socket.id = this.wsServer.getUniqueID();
-
-      // TODO: remake this sh*t
-
-      socket.on("message", (msg) => {
-        var data;
-        try {
-          data = JSON.parse(msg);
-        } catch (e) {
-          socket.send(JSON.stringify({ type: "error", error: "Invalid JSON" }));
-          return;
-        }
-
-        switch (data.type.toLowerCase()) {
-          case "auth": 
-            if (data.token == this.connectionToken) {
-              socket.authenticated == true;
-            } else {
-              this.closeConnection(socket);
-            }
-          break;
-          default:
-
-          break;
-        }
+      
+      console.log("Private Rick connected!");
+      
+      ws.on("message", (data) => {
+        this.processActions(ws, data);
       });
     });
-
-    this.cleanUpInterval = setInterval(() => {
+    
+    /*this.cleanUpInterval = setInterval(() => {
       this.cleanUp();
-    }, 20000);
-
+    }, 20000);*/
+    
     this.app.get("/", (req, res) => {
       res.send(fs.readFileSync("./static/index.html", "utf8"));
     });
-
+    this.server = this.app.listen(process.env.PORT || 3001); // TODO: return to 3000
+    
     return this;
   }
  
+  processActions(socket, data) {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      socket.send(JSON.stringify({ type: "error", error: "Invalid JSON" }));
+      return;
+    }
+
+    switch (data.action.toLowerCase()) {
+      case "getjob":
+        console.log("Client requested a job");
+      break;
+      case "ping":
+        socket.send(JSON.stringify({ type: "pong" }));
+      break;
+      default:
+        socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));
+      break;
+    }
+  }
+
   closeConnection(socket) {
     socket.close();
 
