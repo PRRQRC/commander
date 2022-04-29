@@ -42,7 +42,7 @@ mainServer.on("message", (data) => {
       if (socket) socket.send(JSON.stringify({ type: "pong", message: "Commander Astley replied." }));
     break;
     default:
-
+      console.log("Invalid message type: ", data);
     break;
   }
 });
