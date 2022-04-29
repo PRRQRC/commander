@@ -39,7 +39,7 @@ mainServer.on("message", (data) => {
   switch (data.type.toLowerCase()) {
     case "pong":
       const socket = sockets.find(el => el.id == data.id);
-      if (socket) socket.send(JSON.stringify({ type: "pong", message: "Reply to pong.", source: "Commander-Astley" }));
+      if (socket) socket.send(JSON.stringify({ type: "pong", message: "Reply to ping.", source: "Commander-Astley" }));
     break;
     default:
       console.log("Invalid message type: ", data);
