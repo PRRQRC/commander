@@ -64,7 +64,8 @@ expressWs(app);
 app.ws("/api/ws/:t", (socket, req) => {
   // req.params.t; alternative to middle-ware
   const auth = req.params.t;
-  if (users.findIndex(el => el.botToken == auth) === -1) {
+  if (users.findIndex(el => el.botToken == auth) === -1 || sockets.findIndex(el => el.token == auth) !== -1) {
+    socket.send(JSON.stringify({ type: "error", error: "Token invalid or already in use!" }));
     socket.close();
     setTimeout(() => {
       if ([socket.OPEN, socket.CLOSING].includes(socket.readyState)) {
@@ -74,7 +75,7 @@ app.ws("/api/ws/:t", (socket, req) => {
     return;
   }
   socket.id = getUniqueID();
-
+  socket.token = auth;
   sockets.push(socket);
 
   socket.on("message", (data) => {
@@ -101,8 +102,8 @@ app.ws("/api/ws/:t", (socket, req) => {
 
 
 
-app.get("/test", (req, res) => {
-  res.sendFile(__dirname + "/static/test.html");
+app.get("/panel", (req, res) => {
+  res.sendFile(__dirname + "/static/panel.html");
 });
 
 app.on("upgrade", () => {
@@ -145,7 +146,6 @@ app.get('/auth', async ({ query }, response) => {
       });
 
       const userData = await userResult.json();
-      console.log(userData);
       const dom = new JSDOM(file);
       dom.window.document.querySelector("a#login-link").style = "display: none";
       if (users.findIndex(el => el.id === userData.id) === -1) {
@@ -161,8 +161,10 @@ app.get('/auth', async ({ query }, response) => {
         saveUsers();
 
         dom.window.document.querySelector("p#message").textContent = "Succesfully registered your account " + userData.username + "#" + userData.discriminator + "! Bot token: " + token;
+        dom.window.document.querySelector("span#token").textContent = users.find(el => el.id === userData.id).botToken;
       } else {
         dom.window.document.querySelector("p#message").textContent = "The account " + userData.username + "#" + userData.discriminator + " has already been signed up. Bot Token: " + users.find(el => el.id === userData.id).botToken;
+        dom.window.document.querySelector("span#token").textContent = users.find(el => el.id === userData.id).botToken;
       }
       return response.send(dom.serialize());
     } else {

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      * {
+      --color-dark: #2D3943;
+      --color-light: #f0f0f0;
+    }
+    
+    .console {
+      background-color: var(--color-dark);
+      padding: 5px;
+      border-radius: 5px;
+      font-family: monospace;
+    }
+    .logs {
+      padding-right: 0;
+      padding-left: 2%;
+    }
+    .logs li {
+      margin: 7px 0 7px 0;
+      color: var(--color-light);
+    }
+    .logs li::marker {
+      color: #777;
+    }
+    .time {
+      color: #2d87d3;
+      margin-right: 6px;
+    }
+    </style>
+  </head>
+<body>
+  <h1>Test</h1>
+      
+    <button onclick='sendPing()' id="ping" disabled>Ping</button>
+
+    <br />
+    <br />
+
+    <div class="console">
+      <ol class="logs">
+      </ol>
+    </div>
+
+  <script>
+    const buttons = [document.querySelector("button#ping")];
+    var socket;
+    var messageCount = -1;
+    function format(date) {
+      return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+    }
+    function log(message) {
+      message = (typeof message != "string") ? JSON.stringify(message) : message;
+      var console = document.querySelector(".logs");
+      if (messageCount == 0) {
+        console.innerHTML = "";
+      }
+      var time = document.createElement("span");
+      time.classList.add("time");
+      time.innerHTML = "[" + format(new Date()) + "]";
+      var li = document.createElement("li");
+      li.innerHTML = message;
+
+      li.prepend(time);
+      console.appendChild(li);
+      messageCount++;
+    }
+    log("Initializing...");
+    window.addEventListener("load", function () {
+      log("Searching for bot token in cookies...");
+      const token = getCookie("token") || "";
+      if (!token) {
+        log("No token found. Please login <a href='../'>here</a> to get a token.")
+        log("Connecting aborted");
+        return;
+      }
+      log("Token found! Using: " + token);
+      const url = location.href.replace("https", "wss").replace("http", "ws").replace("panel", "") + 'api/ws/';
+      log("Connecting to '" + url + "'...");
+
+      socket = new WebSocket(url + token);
+      socket.onopen = () => {
+        console.log("Connection to Commander Astley established!");
+        log("Connection to Commander Astley established!");
+        log("Ready to send/receive commands!");
+        buttons.forEach(button => button.disabled = false);
+      };
+      socket.onclose = () => {
+        console.error("Connection closed unexpectedly...");
+        log("Connection closed unexpectedly...")
+      };
+      socket.onerror = (e) => {
+        console.log("Error: ", e);
+        log("An error occured in the connection! " + JSON.stringify(e));
+      };
+
+      socket.onmessage = (e) => {
+        console.log("Message: ", JSON.parse(e.data));
+        log(e.data);
+      };
+    });
+    function getCookie(name) {
+      var nameEQ = name + "=";
+      var ca = document.cookie.split(';');
+      for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    function sendPing() {
+      socket.send(JSON.stringify({ action: "ping" }))
+      log("Ping sent");
+    }
+  </script>
+</body>
+</html>
