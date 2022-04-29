@@ -23,7 +23,7 @@ app.use(bodyParser.text());
 const sockets = [];
  
 const Token = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
-const mainServer = new WebSocket(mainSocket, {
+const mainServer = new WebSocket("ws://commander-astley.tk:3000/api/ws", {
   headers: {
     token: Buffer.from(Token).toString("base64")
   }

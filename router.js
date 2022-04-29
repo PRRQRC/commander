@@ -49,6 +49,9 @@ class Router {
       });
     });
 
+    this.server.get("/", (req, res) => {
+      res.sendFile(__dirname + "/static/index.html");
+    })
     
     return this;
   }
