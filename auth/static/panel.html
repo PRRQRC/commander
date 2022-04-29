@@ -48,7 +48,10 @@
     var socket;
     var messageCount = -1;
     function format(date) {
-      return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+      function fillEmpty(num) {
+        return num < 10 ? "0" + num : num;
+      }
+      return fillEmpty(date.getHours()) + ":" + fillEmpty(date.getMinutes()) + ":" + fillEmpty(date.getSeconds());
     }
     function log(message) {
       message = (typeof message != "string") ? JSON.stringify(message) : message;
@@ -81,8 +84,8 @@
 
       socket = new WebSocket(url + token);
       socket.onopen = () => {
-        console.log("Connection to Commander Astley established!");
-        log("Connection to Commander Astley established!");
+        console.log("Connection to Private Rick/Commander Astley established!");
+        log("Connection to Private Rick/Commander Astley established!");
         log("Ready to send/receive commands!");
         buttons.forEach(button => button.disabled = false);
       };
