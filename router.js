@@ -49,7 +49,7 @@ class Router {
       });
     });
 
-    this.server.get("/", (req, res) => {
+    this.app.get("/", (req, res) => {
       res.sendFile(__dirname + "/static/index.html");
     })
     
