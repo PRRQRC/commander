@@ -4,15 +4,16 @@
 <body>
   <h1>Test site</h1>
 
-  <button onclick="getPixel()">Fetch next job</button>
+  <button onclick="getPixel()" disabled>Fetch next job</button>
 
   <div id="logs"></div>
 
   <script>
+    /*
     const socket = new WebSocket(location.href.replace("https", "wss").replace("http", "ws") + 'api/ws');
     socket.onopen = () => {
       console.log("Connected to server; Waiting for id...");
-    };
+    };*/
 
     var id = null;
 
@@ -57,7 +58,7 @@
         '#FFFFFF': 31
       };
 
-    socket.onmessage = (msg) => {
+    /*socket.onmessage = (msg) => {
       var data;
       try {
         data = JSON.parse(msg.data);
@@ -92,7 +93,7 @@
     function getPixel() {
       if (!id) return alert("Still registering on server!");
       socket.send(JSON.stringify({ type: "getJob" }));
-    }
+    }*/
   </script>
 </body>
 

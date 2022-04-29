@@ -32,6 +32,7 @@ class Router {
       server: this.server,
       path: "/api/ws",
       verifyClient: (info, cb) => {
+        if (!info.req.headers.token) {cb(false, 401, "Unauthorized"); return;}
         var token = Buffer.from(info.req.headers.token, "base64").toString();
         if (this.connectionToken !== token) {cb(false, 401, "Unauthorized"); return;}
         cb(true);
