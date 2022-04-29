@@ -19,32 +19,47 @@ const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(bodyParser.text());
-function config(authtoken) {
-  let data = {
-    headers: {
-      'authorization': `Bearer ${authtoken}`
-    }
-  };
-  return data;
-};
 
-/*wsHttpServer.on("upgrade", (req, socket, head) => {
-const auth = req.headers["sec-websocket-protocol"];
-if (users.findIndex(el => el.botToken == auth) === -1) {
-  // dunno how to do close the connection :(
-    return;
-  }
-});*/
+const sockets = [];
  
 const Token = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
-const mainServer = new WebSocket(mainSocket + Buffer.from(Token).toString("base64"));
+const mainServer = new WebSocket(mainSocket, {
+  headers: {
+    token: Buffer.from(Token).toString("base64")
+  }
+});
+mainServer.on("message", (data) => {
+  try {
+    data = JSON.parse(data);
+  } catch (e) {
+    socket.send(JSON.stringify({ type: "error", error: "Invalid JSON" }));
+    return;
+  }
+
+  switch (data.type.toLowerCase()) {
+    case "pong":
+      const socket = sockets.find(el => el.id == data.id);
+      if (socket) socket.send(JSON.stringify({ type: "pong", message: "Commander Astley replied." }));
+    break;
+    default:
+
+    break;
+  }
+});
 mainServer.on("open", () => {
   console.log("Connection to Commander Astley established!");
 });
 mainServer.on("close", (e) => {
   console.log("Connection lost!", e);
 })
-  
+
+function getUniqueID() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  }
+  return s4() + s4() + '-' + s4();
+}
+
 expressWs(app);
 app.ws("/api/ws/:t", (socket, req) => {
   // req.params.t; alternative to middle-ware
@@ -58,6 +73,9 @@ app.ws("/api/ws/:t", (socket, req) => {
     }, 10000);
     return;
   }
+  socket.id = getUniqueID();
+
+  sockets.push(socket);
 
   socket.on("message", (data) => {
     try {
@@ -69,12 +87,15 @@ app.ws("/api/ws/:t", (socket, req) => {
 
     switch (data.action.toLowerCase()) {
       case "ping":
-        socket.send(JSON.stringify({ type: "pong" }));
+        mainServer.send(JSON.stringify({ action: "ping", socketId: socket.id }));
       break;
       default:
         socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));
       break;
     }
+  });
+  socket.on("close", () => {
+    sockets.splice(sockets.indexOf(socket), 1);
   });
 });
 

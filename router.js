@@ -1,6 +1,7 @@
 const ws = require("ws");
 const express = require("express");
 const fs = require("fs");
+var WebSocketServer = ws.Server;
 const http = require("http");
 
 const Pixels = require("./pixels.js");
@@ -25,40 +26,37 @@ class Router {
     });
     
     this.connectionToken = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
-    this.expressWs = require('express-ws')(this.app);
-    
-    this.app.ws("/api/ws/:t", (socket, req) => {
-      console.log("something connected");
-      
-      const auth = Buffer.from(req.params.t, "base64").toString();
-      console.log(auth);
-      if (this.connectionToken != auth) {
-        //socket.close();
-        setTimeout(() => {
-          if ([socket.OPEN, socket.CLOSING].includes(socket.readyState)) {
-            //socket.terminate();
-          }
-        }, 10000);
-        //return;
+
+    this.server = this.app.listen(process.env.PORT || 3001); // TODO: return to 3000
+    this.wsServer = new WebSocketServer({
+      server: this.server,
+      path: "/api/ws",
+      verifyClient: (info, cb) => {
+        var token = Buffer.from(info.req.headers.token, "base64").toString();
+        if (this.connectionToken !== token) {cb(false, 401, "Unauthorized"); return;}
+        cb(true);
       }
-      
-      console.log("Private Rick connected!");
-      
-      ws.on("message", (data) => {
-        this.processActions(ws, data);
+    });
+
+    this.wsServer.on("connection", (socket) => {
+      console.log("Private rick connected!");
+      socket.on("close", () => {
+        console.log("Private rick disconnected!");
+      });
+
+      socket.on("message", (data) => {
+        this.processActions(socket, data);
       });
     });
-    
-    /*this.cleanUpInterval = setInterval(() => {
-      this.cleanUp();
-    }, 20000);*/
-    
-    this.app.get("/", (req, res) => {
-      res.send(fs.readFileSync("./static/index.html", "utf8"));
-    });
-    this.server = this.app.listen(process.env.PORT || 3001); // TODO: return to 3000
+
     
     return this;
+  }
+  getUniqueID() {
+    function s4() {
+      return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    }
+    return s4() + s4() + '-' + s4();
   }
  
   processActions(socket, data) {
@@ -74,22 +72,12 @@ class Router {
         console.log("Client requested a job");
       break;
       case "ping":
-        socket.send(JSON.stringify({ type: "pong" }));
+        socket.send(JSON.stringify({ type: "pong", id: data.socketId }));
       break;
       default:
         socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));
       break;
     }
-  }
-
-  closeConnection(socket) {
-    socket.close();
-
-    process.nextTick(() => {
-      if ([socket.OPEN, socket.CLOSING].includes(socket.readyState)) {
-        socket.terminate();
-      }
-    });
   }
 
   sortByTime(arr) {
