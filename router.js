@@ -27,7 +27,7 @@ class Router {
     
     this.connectionToken = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
 
-    this.server = this.app.listen(process.env.PORT || 3000); // TODO: return to 3000
+    this.server = this.app.listen(process.env.PORT || 3001); // TODO: return to 3000
     this.wsServer = new WebSocketServer({
       server: this.server,
       path: "/api/ws",

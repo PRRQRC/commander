@@ -31,50 +31,121 @@
     </style>
   </head>
 <body>
-  <h1>Test</h1>
-      
-    <button onclick='sendPing()' id="ping" disabled>Ping</button>
 
+  <h1>Control Panel</h1>
+    
+  <p>
+    You can execute some actions of you're bot through this manually. You shouldn't use this panel if you're token currently is in use.
     <br />
-    <br />
+    The userscript for everyone is available <a href="" target="_blank">Here (coming soon)</a>.
+  </p>
 
-    <div class="console">
-      <ol class="logs">
-      </ol>
-    </div>
+  <button onclick='sendPing()' id="ping" disabled>Ping</button>
+  <button onclick="getPixel(this)" id="pixel" disabled>Next pixel to paint</button>
+
+  <br />
+  <br />
+
+  <div class="console">
+    <ol class="logs">
+    </ol>
+  </div>
 
   <script>
-    const buttons = [document.querySelector("button#ping")];
+    class Log {
+      constructor() {
+        return this;
+      }
+      format(date) {
+        function fillEmpty(num) {
+          return num < 10 ? "0" + num : num;
+        }
+        return fillEmpty(date.getHours()) + ":" + fillEmpty(date.getMinutes()) + ":" + fillEmpty(date.getSeconds());
+      }
+      log(message) {
+        message = (typeof message != "string") ? JSON.stringify(message) : message;
+        var console = document.querySelector(".logs");
+        if (messageCount == 0) {
+          console.innerHTML = "";
+        }
+        var time = document.createElement("span");
+        time.classList.add("time");
+        time.innerHTML = "[" + this.format(new Date()) + "]";
+        var li = document.createElement("li");
+        li.innerHTML = message;
+
+        li.prepend(time);
+        console.appendChild(li);
+        messageCount++;
+      }
+      error(message) {
+        message = (typeof message != "string") ? JSON.stringify(message) : message;
+        var console = document.querySelector(".logs");
+        if (messageCount == 0) {
+          console.innerHTML = "";
+        }
+        var time = document.createElement("span");
+        time.classList.add("time");
+        time.innerHTML = "[" + this.format(new Date()) + "]";
+        var li = document.createElement("li");
+        li.style.color = "#F62451";
+        li.innerHTML = message;
+
+        li.prepend(time);
+        console.appendChild(li);
+        messageCount++;
+      }
+      success(message) {
+        message = (typeof message != "string") ? JSON.stringify(message) : message;
+        var console = document.querySelector(".logs");
+        if (messageCount == 0) {
+          console.innerHTML = "";
+        }
+        var time = document.createElement("span");
+        time.classList.add("time");
+        time.innerHTML = "[" + this.format(new Date()) + "]";
+        var li = document.createElement("li");
+        li.style.color = "#1fd78d";
+        li.innerHTML = message;
+
+        li.prepend(time);
+        console.appendChild(li);
+        messageCount++;
+      }
+      warn(message) {
+        message = (typeof message != "string") ? JSON.stringify(message) : message;
+        var console = document.querySelector(".logs");
+        if (messageCount == 0) {
+          console.innerHTML = "";
+        }
+        var time = document.createElement("span");
+        time.classList.add("time");
+        time.innerHTML = "[" + this.format(new Date()) + "]";
+        var li = document.createElement("li");
+        li.style.color = "#EB7B59";
+        li.innerHTML = message;
+
+        li.prepend(time);
+        console.appendChild(li);
+        messageCount++;
+      }
+    }
+    const buttons = [document.querySelector("button#ping"), document.querySelector("button#pixel")];
     var socket;
     var messageCount = -1;
-    function format(date) {
-      function fillEmpty(num) {
-        return num < 10 ? "0" + num : num;
-      }
-      return fillEmpty(date.getHours()) + ":" + fillEmpty(date.getMinutes()) + ":" + fillEmpty(date.getSeconds());
-    }
-    function log(message) {
-      message = (typeof message != "string") ? JSON.stringify(message) : message;
-      var console = document.querySelector(".logs");
-      if (messageCount == 0) {
-        console.innerHTML = "";
-      }
-      var time = document.createElement("span");
-      time.classList.add("time");
-      time.innerHTML = "[" + format(new Date()) + "]";
-      var li = document.createElement("li");
-      li.innerHTML = message;
 
-      li.prepend(time);
-      console.appendChild(li);
-      messageCount++;
-    }
+    const Logs = new Log();
+    function log(msg) {return Logs.log(msg);}
+    function error(msg) {return Logs.error(msg);}
+    function success(msg) {return Logs.success(msg)}
+    function warn(msg) {return Logs.warn(msg);}
+    
     log("Initializing...");
     window.addEventListener("load", function () {
       log("Searching for bot token in cookies...");
       const token = getCookie("token") || "";
       if (!token) {
-        log("No token found. Please login <a href='../'>here</a> to get a token.")
+        error("No token found. Please login <a href='../'>here</a> to get a token.")
         log("Connecting aborted");
         return;
       }
@@ -85,17 +156,17 @@
       socket = new WebSocket(url + token);
       socket.onopen = () => {
         console.log("Connection to Private Rick/Commander Astley established!");
-        log("Connection to Private Rick/Commander Astley established!");
+        success("Connection to Private Rick/Commander Astley established!");
         log("Ready to send/receive commands!");
         buttons.forEach(button => button.disabled = false);
       };
       socket.onclose = () => {
         console.error("Connection closed unexpectedly...");
-        log("Connection closed unexpectedly...")
+        error("Connection closed unexpectedly...")
       };
       socket.onerror = (e) => {
         console.log("Error: ", e);
-        log("An error occured in the connection! " + JSON.stringify(e));
+        error("An error occured in the connection! " + JSON.stringify(e));
       };
 
       socket.onmessage = (e) => {
@@ -117,6 +188,9 @@
     function sendPing() {
       socket.send(JSON.stringify({ action: "ping" }))
       log("Ping sent");
+    }
+    function getPixel(button) {
+      warn("This function is currently work-in-progress.");
     }
   </script>
 </body>
