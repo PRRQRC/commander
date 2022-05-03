@@ -332,6 +332,12 @@ class Pixels {
     let job = this.jobs.slice().filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).shift();
     job.id = this.getUniqueID();
     this.processing.push(job);
+    setTimeout(() => {
+      if (!this.map[job.absCoords[0]][job.absCoords[1]].isWrong) return;
+      this.processing.splice(this.processing.indexOf(job), 1);
+      this.jobs.push(job);
+      this.jobs.sort(this.importances.importanceSorter);
+    },4000);
     return job;
   }
   finish(data) {
