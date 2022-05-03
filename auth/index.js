@@ -115,7 +115,7 @@ app.ws("/api/ws/:t", (socket, req) => {
         mainServer.send(JSON.stringify({ action: "ping", socketId: socket.id }));
       break;
       case "nextpixel":
-        mainServer.send(JSON.stringify({ action: "nextPixel", socketId: socket.id }));
+        mainServer.send(JSON.stringify({ action: "nextPixel", socketId: socket.id, token: socket.token }));
       break;
       default:
         socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));

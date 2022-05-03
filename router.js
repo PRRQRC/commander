@@ -82,17 +82,17 @@ class Router {
         socket.send(JSON.stringify({ type: "pong", id: data.socketId }));
       break;
       case "nextpixel":
-        if (this.timeouts[data.socketId]) {
+        if (this.timeouts[data.token]) {
           socket.send(JSON.stringify({ type: "error", message: "Application still in timeout! For test purposes (10s)", id: data.socketId }));
           return;
         }
-        if (this.timeouts[data.socketId] - (new Date()).getTime() < 1000 * 60 * 5 || !this.timeouts[data.socketId]) {
+        if (this.timeouts[data.token] - (new Date()).getTime() < 1000 * 60 * 5 || !this.timeouts[data.token]) {
           const job = this.imageAnalyzer.nextJob(this.pixels);
           if (!job) { console.log(job); socket.send(JSON.stringify({ type: "intentional-error", errorId: 10, id: data.socketId })); return; }
           socket.send(JSON.stringify({ type: "nextPixel", job: job, id: data.socketId }));
-          this.timeouts[data.socketId] = new Date().getTime();
+          this.timeouts[data.token] = new Date().getTime();
           setTimeout(() => {
-            delete this.timeouts[data.socketId];
+            delete this.timeouts[data.token];
           }, 1000 * 10);
           return;
         }
