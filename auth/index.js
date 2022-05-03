@@ -10,8 +10,9 @@ const WebSocket = require("ws");
 const { clientId, clientSecret } = require("./config.json");
 const { users } = require("./authenticated.json");
 
-const mainPort = (process.argv[2]) ? process.argv[2] : 3000;
-const mainSocket = require("./config.json").mainSocket.replace(/(%{port})/gi, mainPort);
+const mainPort = (process.argv[2]) ? process.argv[2] : 1020;
+const mainHost = (process.argv[3]) ? process.argv[3] : "commander-astley.tk";
+const mainSocket = require("./config.json").mainSocket.replace(/(%{port})/gi, mainPort).replace(/(%{host})/gi, mainHost);
 
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
