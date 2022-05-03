@@ -9,7 +9,7 @@ const Pixels = require("./pixels.js");
 // the router module to handle requests, assign jobs, etc.
 
 class Router {
-  constructor(imageData, paths) {
+  constructor(imageData, imageProcessor, paths, port) {
     this.app = express();
 
     this.processing = [];
@@ -20,14 +20,17 @@ class Router {
     this.jobs = [];
 
     this.paths = paths;
-    this.imageAnalyzer = new Pixels({ file: paths.map, heatmap: paths.heatmap, backupFile: paths.backups }, { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
+    //this.imageAnalyzer = new Pixels({ file: paths.map, heatmap: paths.heatmap, backupFile: paths.backups }, { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
+    this.imageAnalyzer = imageProcessor;
     this.imageAnalyzer.on("update", (job) => {
-      console.log("Wrong pixel placed!");
+      console.log("Wrong pixel placed! ", job);
     });
-    
+
+    this.timeouts = {};
+
     this.connectionToken = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
 
-    this.server = this.app.listen(process.env.PORT || 3000); // TODO: return to 3000
+    this.server = this.app.listen(process.env.PORT || port);
     this.wsServer = new WebSocketServer({
       server: this.server,
       path: "/api/ws",
@@ -77,6 +80,22 @@ class Router {
       break;
       case "ping":
         socket.send(JSON.stringify({ type: "pong", id: data.socketId }));
+      break;
+      case "nextpixel":
+        if (this.timeouts[socket.id]) {
+          socket.send(JSON.stringify({ type: "error", message: "Application still in timeout! For test purposes (10s)", id: data.socketId }));
+          return;
+        }
+        if (this.timeouts[socket.id] - (new Date()).getTime() < 1000 * 60 * 5 || !this.timeouts[socket.id]) {
+          const job = this.imageAnalyzer.nextJob(this.pixels);
+          if (!job) { console.log(job); socket.send(JSON.stringify({ type: "intentional-error", errorId: 10, id: data.socketId })); return; }
+          socket.send(JSON.stringify({ type: "nextPixel", job: job, id: data.socketId }));
+          this.timeouts[socket.id] = new Date().getTime();
+          setTimeout(() => {
+            delete this.timeouts[socket.id];
+          }, 1000 * 10);
+          return;
+        }
       break;
       default:
         socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));

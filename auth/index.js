@@ -7,8 +7,11 @@ const fs = require("fs");
 const bodyParser = require("body-parser");
 const WebSocket = require("ws");
 
-const { clientId, clientSecret, mainSocket } = require("./config.json");
+const { clientId, clientSecret } = require("./config.json");
 const { users } = require("./authenticated.json");
+
+const mainPort = (process.argv[2]) ? process.argv[2] : 3000;
+const mainSocket = require("./config.json").mainSocket.replace(/(%{port})/gi, mainPort);
 
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
@@ -35,11 +38,20 @@ mainServer.on("message", (data) => {
     socket.send(JSON.stringify({ type: "error", error: "Invalid JSON" }));
     return;
   }
-
+  
+  const socket = sockets.find(el => el.id == data.id);
   switch (data.type.toLowerCase()) {
     case "pong":
-      const socket = sockets.find(el => el.id == data.id);
-      if (socket) socket.send(JSON.stringify({ type: "pong", message: "Reply to ping.", source: "Commander-Astley" }));
+      if (socket) socket.send(JSON.stringify({ type: "pong", message: "Reply to ping.", source: "commander-astley" }));
+    break;
+    case "error":
+      if (socket) socket.send(JSON.stringify({ type: "error", error: data.message, source: "commander-astley" }));
+    break;
+    case "intentional-error":
+      if (socket) socket.send(JSON.stringify({ type: "intentional-error", errorCode: data.errorId, message: genErrorMessage(data.errorId), source: "commander-astley" }));
+    break;
+    case "nextpixel":
+      if (socket) socket.send(JSON.stringify({ type: "pixel", pixel: data.job, source: "commander-astley" }));
     break;
     default:
       console.log("Invalid message type: ", data);
@@ -52,6 +64,17 @@ mainServer.on("open", () => {
 mainServer.on("close", (e) => {
   console.log("Connection lost!", e);
 })
+
+function genErrorMessage(code) {
+  switch (code) {
+    case 10:
+      return "There are currently no pixels to paint.";
+    break;
+    default:
+      return "unknown problem";
+    break;
+  }
+}
 
 function getUniqueID() {
   function s4() {
@@ -89,6 +112,9 @@ app.ws("/api/ws/:t", (socket, req) => {
     switch (data.action.toLowerCase()) {
       case "ping":
         mainServer.send(JSON.stringify({ action: "ping", socketId: socket.id }));
+      break;
+      case "nextpixel":
+        mainServer.send(JSON.stringify({ action: "nextPixel", socketId: socket.id }));
       break;
       default:
         socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));

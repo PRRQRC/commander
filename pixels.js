@@ -178,8 +178,6 @@ class Pixels {
     this.data = data;
     this.save = saves;
 
-
-
     this.x = data.x;
     this.y = data.y;
     this.width = data.width;
@@ -188,6 +186,7 @@ class Pixels {
 
     this.pixels = [];
     this.jobs = [];
+    this.processing = [];
     this.canvas = null;
     this.map = {};
 
@@ -214,7 +213,7 @@ class Pixels {
         this.pixels[pixel].importance = importance.importance;
         this.map[this.x + x][this.y + y].importance = importance.importance;
       });
-      this.jobs = this.pixels.slice().sort(this.importances.importanceSorter).filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
+      this.jobs = this.pixels.slice().sort(this.importances.importanceSorter);//.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
       this.worker.postMessage({ backup: { version: 2, data: { importances: importances, rates: this.importances.changeRates } }, path: this.save }); // save to file using a worker
     });
 
@@ -241,6 +240,7 @@ class Pixels {
     this.reloading = true;
     return new Promise(async (res, rej) => {
       this.pixels = [];
+      this.processing = [];
       this.map = {};
       console.log("Loading image...");
       Jimp.read(this.filePath, (err, image) => {
@@ -255,25 +255,27 @@ class Pixels {
         console.log("Loading + analyzing heatmap...");
 
         this.importances.reload().then(() => {
-          console.log("heatmap analyzed! Processing...");
+          console.log("heatmap analyzed!");
           this.important = this.importances.getImportantByHeatmap();
-
-          for (let i = 0; i < this.width; i++) {
-            for (let j = 0; j < this.height; j++) {
-              let color = this.image.getPixelColor(i, j);
-              var importance = this.importances.importances.find(el => el.x === i && el.y === j);
-              importance = (importance) ? importance.importance : 0;
-              color = Jimp.intToRGBA(color);
-              this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
-            }
-          }
           
           //this.pixels = this.sortByImportance(this.pixels);
           
-          console.log("Data processed!");
           console.log("Loading importance backup...");
           this.importances.loadBackup(this.save).then(() => {
             console.log("Importance backup loaded!");
+            console.log("Processing importances...")
+            
+            for (let i = 0; i < this.width; i++) {
+              for (let j = 0; j < this.height; j++) {
+                let color = this.image.getPixelColor(i, j);
+                var importance = this.importances.importances.find(el => el.x === i && el.y === j);
+                importance = (importance) ? importance.importance : 0;
+                color = Jimp.intToRGBA(color);
+                this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
+              }
+            }
+            
+            console.log("Data processed!");
             console.log("Analyzing canvas...")
             this.syncPixelCanvas(isReconnect).then(() => {
               this.pixels.forEach((pixel, i) => {
@@ -284,7 +286,7 @@ class Pixels {
               });
               console.log("Map generated!");
 
-              this.jobs = this.pixels.slice().sort(this.importances.importanceSorter).filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
+              this.jobs = this.pixels.slice().sort(this.importances.importanceSorter);//.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
 
               /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
               this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
@@ -318,16 +320,38 @@ class Pixels {
   isWrong(pixel) {
     return !pixel.color.index == this.canvas.matrix[pixel.coords[0]][pixel.coords[1]].index;
   }
+  getUniqueID() {
+    function s4() {
+      return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    }
+    return s4() + s4() + '-' + s4();
+  }
+
+  nextJob() {
+    if (this.jobs.length === 0) { return null; }
+    let job = this.jobs.slice().filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).shift();
+    job.id = this.getUniqueID();
+    this.processing.push(job);
+    return job;
+  }
+  finish(data) {
+    if (this.processing.findIndex(el => el.absCoords[0] === data.x && el.absCoords[1] === data.y) === -1) { return; }
+    let finished = this.processing.filter((el) => {return el.absCoords[0] === data.x && el.absCoords[1] === data.y});
+    finished.forEach(el => {
+      this.processing.splice(this.processing.indexOf(el), 1);
+    });
+  }
 
   update(data) {
     let isWrong = this.isWrong({ coords: [data.x, data.y], color: data.color });
     this.map[data.x][data.y].isWrong = isWrong;
     let job = this.jobs.findIndex(el => el.absCoords[0] === data.x && el.absCoords[1] === data.y)
-    let wrong = this.jobs[job].isWrong;
-    if (job) this.jobs[job].isWrong = isWrong;
+    let wrong = (job === -1) ? false : this.jobs[job].isWrong;
+    if (job !== -1) this.jobs[job].isWrong = isWrong;
     this.jobs = this.jobs.filter(el => el.isWrong == true || el.isWrong == undefined);
     this.importances.update(data);
     if (wrong != isWrong && isWrong == true) this.eventEmitter.emit("update", this.jobs[job]);
+    if (!isWrong) this.finish(data);
   }
   convertColor(rgba) {
     return this.colors.convertColor(rgba);
@@ -370,7 +394,7 @@ class Pixels {
           rej(e);
         });
         this.scraper.on("update", (data) => {
-          console.log("Canvas updated: ", data);
+          //console.log("Canvas updated: ", data);
           this.update(data);
         });
       });

@@ -2,5 +2,5 @@
   "clientId": "967841618436694036",
   "clientSecret": "mSUErgCpdjaAx08YcdvgLTO9-PBnbZgi",
   "port": 3000,
-  "mainSocket": "ws://commander-astley.tk:1020/api/ws"
+  "mainSocket": "ws://localhost:%{port}/api/ws"
 }

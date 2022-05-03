@@ -11,6 +11,8 @@
       background-color: var(--color-dark);
       padding: 5px;
       border-radius: 5px;
+      max-height: 80vw;
+      overflow-y: auto;
       font-family: monospace;
     }
     .logs {
@@ -77,6 +79,7 @@
         li.prepend(time);
         console.appendChild(li);
         messageCount++;
+        li.scrollIntoView();
       }
       error(message) {
         message = (typeof message != "string") ? JSON.stringify(message) : message;
@@ -94,6 +97,7 @@
         li.prepend(time);
         console.appendChild(li);
         messageCount++;
+        li.scrollIntoView();
       }
       success(message) {
         message = (typeof message != "string") ? JSON.stringify(message) : message;
@@ -111,6 +115,7 @@
         li.prepend(time);
         console.appendChild(li);
         messageCount++;
+        li.scrollIntoView();
       }
       warn(message) {
         message = (typeof message != "string") ? JSON.stringify(message) : message;
@@ -128,6 +133,7 @@
         li.prepend(time);
         console.appendChild(li);
         messageCount++;
+        li.scrollIntoView();
       }
     }
     const buttons = [document.querySelector("button#ping"), document.querySelector("button#pixel")];
@@ -171,7 +177,18 @@
 
       socket.onmessage = (e) => {
         console.log("Message: ", JSON.parse(e.data));
-        log(e.data);
+        let data = JSON.parse(e.data);
+        switch(data.type) {
+          case "error":
+            warn(e.data);
+          break;
+          case "unexpected-error":
+            error(e.data);
+          break;
+          default:
+            log(e.data);
+          break;
+        }
       };
     });
     function getCookie(name) {
@@ -190,7 +207,7 @@
       log("Ping sent");
     }
     function getPixel(button) {
-      warn("This function is currently work-in-progress.");
+      socket.send(JSON.stringify({ action: "nextPixel" }));
     }
   </script>
 </body>
