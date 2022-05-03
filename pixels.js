@@ -330,6 +330,7 @@ class Pixels {
   nextJob() {
     if (this.jobs.length === 0) { return null; }
     let job = this.jobs.slice().filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).shift();
+    this.jobs = this.jobs.splice(this.jobs.indexOf(job), 1);
     job.id = this.getUniqueID();
     this.processing.push(job);
     setTimeout(() => {
