@@ -329,8 +329,9 @@ class Pixels {
 
   nextJob() {
     if (this.jobs.length === 0) { return null; }
+    const len = this.jobs.length;
     let job = this.jobs.slice().filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).shift();
-    this.jobs.splice(this.jobs.indexOf(job), 1);
+    this.jobs.splice(this.jobs.indexOf(this.jobs.find(el => el.coords[0] == job.coords[0] && el.coords[1] == job.coords[1])), 1);
     job.id = this.getUniqueID();
     this.processing.push(job);
     setTimeout(() => {
