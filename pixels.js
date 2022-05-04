@@ -3,7 +3,6 @@ const EventEmitter = require('events');
 var sizeOf = require('image-size');
 var Jimp = require('jimp');
 const Scraper = require("pixelcanvas-scraper");
-const { setTimeout } = require('timers/promises');
 const { Worker } = require("worker_threads");
 const EnumColor = require("./colors.js");
 const fs = require("fs");
@@ -329,7 +328,6 @@ class Pixels {
 
   nextJob() {
     if (this.jobs.length === 0) { return null; }
-    const len = this.jobs.length;
     let job = this.jobs.slice().filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).shift();
     this.jobs.splice(this.jobs.indexOf(this.jobs.find(el => el.coords[0] == job.coords[0] && el.coords[1] == job.coords[1])), 1);
     job.id = this.getUniqueID();
@@ -339,7 +337,7 @@ class Pixels {
       this.processing.splice(this.processing.indexOf(job), 1);
       this.jobs.push(job);
       this.jobs.sort(this.importances.importanceSorter);
-    },4000);
+    }, 4000);
     return job;
   }
   finish(data) {
@@ -405,6 +403,8 @@ class Pixels {
           //console.log("Canvas updated: ", data);
           this.update(data);
         });
+      }).catch((e) => {
+        
       });
     });
   }
