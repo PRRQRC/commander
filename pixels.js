@@ -335,7 +335,7 @@ class Pixels {
     job.id = this.getUniqueID();
     this.processing.push(job);
     setTimeout(() => {
-      if (this.map[job.absCoords[0]][job.absCoords[1]].isWrong) return;
+      if (!this.map[job.absCoords[0]][job.absCoords[1]].isWrong) return;
       this.processing.splice(this.processing.indexOf(job), 1);
       this.jobs.push(job);
       this.jobs.sort(this.importances.importanceSorter);
