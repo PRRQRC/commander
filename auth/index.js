@@ -6,11 +6,12 @@ const fetch = require("node-fetch");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const WebSocket = require("ws");
+//var rateLimit = require('ws-rate-limit')(10, '1s')
 
 const { clientId, clientSecret } = require("./config.json");
 const { users } = require("./authenticated.json");
 
-const mainPort = (process.argv[2]) ? process.argv[2] : 1020;
+const mainPort = (process.argv[2]) ? process.argv[2] : 80;
 const mainHost = (process.argv[3]) ? process.argv[3] : "commander-astley.tk";
 const mainSocket = require("./config.json").mainSocket.replace(/(%{port})/gi, mainPort).replace(/(%{host})/gi, mainHost);
 

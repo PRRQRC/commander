@@ -1,10 +1,6 @@
 const ws = require("ws");
 const express = require("express");
-const fs = require("fs");
 var WebSocketServer = ws.Server;
-const http = require("http");
-
-const Pixels = require("./pixels.js");
 
 // the router module to handle requests, assign jobs, etc.
 

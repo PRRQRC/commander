@@ -2,7 +2,7 @@
 <html>
   <head>
     <style>
-      * {
+    * {
       --color-dark: #2D3943;
       --color-light: #f0f0f0;
     }
@@ -34,19 +34,22 @@
   </head>
 <body>
 
-  <h1>Control Panel</h1>
+  <div id="content">
+    <h1>Control Panel</h1>
     
-  <p>
-    You can execute some actions of you're bot through this manually. You shouldn't use this panel if you're token currently is in use.
+    <p>
+      You can execute some actions of you're bot through this manually. You shouldn't use this panel if you're token
+      currently is in use.
+      <br />
+      The userscript for everyone is available <a href="" target="_blank">Here (coming soon)</a>.
+    </p>
+    
+    <button onclick='sendPing()' id="ping" disabled>Ping</button>
+    <button onclick="getPixel(this)" id="pixel" disabled>Next pixel to paint</button>
+    
     <br />
-    The userscript for everyone is available <a href="" target="_blank">Here (coming soon)</a>.
-  </p>
-
-  <button onclick='sendPing()' id="ping" disabled>Ping</button>
-  <button onclick="getPixel(this)" id="pixel" disabled>Next pixel to paint</button>
-
-  <br />
-  <br />
+    <br />
+  </div>
 
   <div class="console">
     <ol class="logs">
@@ -81,23 +84,26 @@
         messageCount++;
         li.scrollIntoView();
       }
-      error(message) {
-        message = (typeof message != "string") ? JSON.stringify(message) : message;
-        var console = document.querySelector(".logs");
-        if (messageCount == 0) {
-          console.innerHTML = "";
-        }
-        var time = document.createElement("span");
-        time.classList.add("time");
-        time.innerHTML = "[" + this.format(new Date()) + "]";
-        var li = document.createElement("li");
-        li.style.color = "#F62451";
-        li.innerHTML = message;
+      error(...messages) {
+        for (let i = 0; i < messages.length; i++) {
+          let message = messages[i];
+          message = (typeof message != "string") ? JSON.stringify(message) : message;
+          var console = document.querySelector(".logs");
+          if (messageCount == 0) {
+            console.innerHTML = "";
+          }
+          var time = document.createElement("span");
+          time.classList.add("time");
+          time.innerHTML = "[" + this.format(new Date()) + "]";
+          var li = document.createElement("li");
+          li.style.color = "#F62451";
+          li.innerHTML = message;
 
-        li.prepend(time);
-        console.appendChild(li);
-        messageCount++;
-        li.scrollIntoView();
+          li.prepend(time);
+          console.appendChild(li);
+          messageCount++;
+          li.scrollIntoView();
+        }
       }
       success(message) {
         message = (typeof message != "string") ? JSON.stringify(message) : message;
@@ -148,15 +154,18 @@
     
     log("Initializing...");
     window.addEventListener("load", function () {
-      log("Searching for bot token in cookies...");
-      const token = getCookie("token") || "";
+      const link = (new URL(document.location));
+      const params = link.searchParams;
+      log("Searching for bot token in cookies/url...");
+      if (params.has("t")) document.querySelector("#content").display = "none"
+      const token = params.get("t") || getCookie("token") || "";
       if (!token) {
         error("No token found. Please login <a href='../'>here</a> to get a token.")
         log("Connecting aborted");
         return;
       }
       log("Token found! Using: " + token);
-      const url = location.href.replace("https", "wss").replace("http", "ws").replace("panel", "") + 'api/ws/';
+      const url = link.origin.replace("https", "wss").replace("http", "ws").replace("panel", "") + '/api/ws/';
       log("Connecting to '" + url + "'...");
 
       socket = new WebSocket(url + token);
