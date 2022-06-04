@@ -93,6 +93,9 @@ class Router {
           return;
         }
       break;
+      case "alive":
+        // client sending pings to keep connection alive
+      break;
       default:
         socket.send(JSON.stringify({ type: "error", error: "Invalid action" }));
       break;
