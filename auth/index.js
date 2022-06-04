@@ -28,44 +28,67 @@ app.use(bodyParser.text());
 const sockets = [];
  
 const Token = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
-const mainServer = new WebSocket(mainSocket, {
-  headers: {
-    token: Buffer.from(Token).toString("base64")
-  }
-});
-mainServer.on("message", (data) => {
+var mainServer
+
+function reconnect() {
+  mainServer = new WebSocket(mainSocket, {
+    headers: {
+      token: Buffer.from(Token).toString("base64")
+    }
+  });
+
+  mainServer.on("message", (data) => {
+    parseServerMessage(data);
+  });
+  var alive;
+  mainServer.on("open", () => {
+    console.log("Connection to Commander Astley established!");
+
+    alive = setInterval(() => {
+      mainServer.send(JSON.stringify({ action: "alive" }));
+    }, 4000);
+  });
+  mainServer.on("close", (e) => {
+    console.log("Connection lost! Retrying in 2s", e);
+    clearInterval(alive);
+    setTimeout(() => {
+      reconnect();
+    }, 2000);
+  });
+  mainServer.on("error", (e) => {
+    console.log("Websocket error: ", e);
+  })
+}
+
+reconnect();
+
+function parseServerMessage(data) {
   try {
     data = JSON.parse(data);
   } catch (e) {
     socket.send(JSON.stringify({ type: "error", error: "Invalid JSON" }));
     return;
   }
-  
+
   const socket = sockets.find(el => el.id == data.id);
   switch (data.type.toLowerCase()) {
     case "pong":
       if (socket) socket.send(JSON.stringify({ type: "pong", message: "Reply to ping.", source: "commander-astley" }));
-    break;
+      break;
     case "error":
       if (socket) socket.send(JSON.stringify({ type: "error", error: data.message, source: "commander-astley" }));
-    break;
+      break;
     case "intentional-error":
       if (socket) socket.send(JSON.stringify({ type: "intentional-error", errorCode: data.errorId, message: genErrorMessage(data.errorId), source: "commander-astley" }));
-    break;
+      break;
     case "nextpixel":
       if (socket) socket.send(JSON.stringify({ type: "pixel", pixel: data.job, source: "commander-astley" }));
-    break;
+      break;
     default:
       console.log("Invalid message type: ", data);
-    break;
+      break;
   }
-});
-mainServer.on("open", () => {
-  console.log("Connection to Commander Astley established!");
-});
-mainServer.on("close", (e) => {
-  console.log("Connection lost!", e);
-})
+}
 
 function genErrorMessage(code) {
   switch (code) {
