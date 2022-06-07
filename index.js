@@ -10,7 +10,8 @@ const colors = new Colors();
 
 const fs = require("fs");
 
-const map = new Pixels({ file: './data/qr.png', heatmap: './data/heatmap.png', backupFile: './data/backup.json' }, { x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" });
+const config = require("./config.json");//{ x: -513, y: 2780, width: 33, height: 33, fingerprint: "57406ac14592dae5e720e0e68d0f4583" };
+const map = new Pixels({ file: './data/qr.png', heatmap: './data/heatmap.png', backupFile: './data/backup.json' }, config);
 
 map.reload().then((data) => {
   const router = new Router(data, map, { map: "./data/qr.png", heatmap: "./data/heatmap.png", backups: "./data/backup.json" }, port);

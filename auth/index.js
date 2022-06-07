@@ -6,9 +6,11 @@ const fetch = require("node-fetch");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const WebSocket = require("ws");
+const cors = require("cors");
 //var rateLimit = require('ws-rate-limit')(10, '1s')
 
-const { clientId, clientSecret } = require("./config.json");
+const { clientId } = require("./config.json");
+const clientSecret = (process.argv[4]) ? process.argv[4] : ((process.env["clientSecret"]) ? process.env["clientSecret"] : require("./config.json").clientSecret);
 const { users } = require("./authenticated.json");
 
 const mainPort = (process.argv[2]) ? process.argv[2] : 80;
@@ -23,6 +25,7 @@ const file = fs.readFileSync("./static/index.html", "utf8");
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(cors({ origin: "https://pixelcanvas.io" }))
 app.use(bodyParser.text());
 
 const sockets = [];
@@ -206,7 +209,6 @@ app.get('/auth', async ({ query }, response) => {
           username: userData.username,
           discriminator: userData.discriminator,
           avatar: userData.avatar,
-          token: oauthData.access_token,
           botToken: token
         });
         saveUsers();
@@ -219,11 +221,22 @@ app.get('/auth', async ({ query }, response) => {
       }
       return response.send(dom.serialize());
     } else {
+      console.log(oauthResult);
+      console.log(oauthResult.headers);
+      console.log(await oauthResult.text());
       return response.sendFile(__dirname + "/static/error.html");
     }
   } catch (e) {
     console.log(e);
   }
+});
+
+app.get("/api/verify/:t", (req, res) => {
+  const token = req.params.t;
+  if (users.findIndex(el => el.botToken == token) === -1) {
+    return res.send(JSON.stringify({ type: "error", message: "token not found" }));
+  }
+  res.send(JSON.stringify({ type: "success", message: "token valid" }));
 });
 
 app.get("/api/tempauth/:t", (req, res) => { // just ignore it pls for now
@@ -239,8 +252,6 @@ app.get("/api/tempauth/:t", (req, res) => { // just ignore it pls for now
   }
 });
 
-
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname + '/static/index.html'))
 })
@@ -255,3 +266,5 @@ function saveUsers() {
     if (err) console.log("There was an error storing the user data: ", err);
   });
 }
+
+//by letalexalexyt: wow thats cool teach me the ways. i cant understand all of the code, but cool. also sorry for joining your repl i was interested.

@@ -87,7 +87,7 @@ class ImportanceAnalyzer {
     if (!this.colored.length) { return []; }
     this.colored.forEach((pixel, i) => {
       let color = Jimp.intToRGBA(pixel.color);
-      let importance = 255 - (Math.abs(color.r - this.color.r) + Math.abs(color.g - this.color.g) + Math.abs(color.b - this.color.b));
+      let importance = 257 - (Math.abs(color.r - this.color.r) + Math.abs(color.g - this.color.g) + Math.abs(color.b - this.color.b));
       this.importances.push({ x: pixel.x, y: pixel.y, importance: importance, heatmapImp: importance });
     });
     this.importances.sort(this.importanceSorter);
@@ -251,19 +251,20 @@ class Pixels {
         this.image = image;
 
         console.log("Image loaded.");
-        console.log("Loading + analyzing heatmap...");
+        console.log("Loading heatmap...");
 
         this.importances.reload().then(() => {
-          console.log("heatmap analyzed!");
-          this.important = this.importances.getImportantByHeatmap();
-          
           //this.pixels = this.sortByImportance(this.pixels);
           
           console.log("Loading importance backup...");
           this.importances.loadBackup(this.save).then(() => {
             console.log("Importance backup loaded!");
-            console.log("Processing importances...")
             
+            console.log("Analyzing heatmap...");
+            this.important = this.importances.getImportantByHeatmap();
+            console.log("heatmap analyzed!");          
+            console.log("Processing importances...")
+
             for (let i = 0; i < this.width; i++) {
               for (let j = 0; j < this.height; j++) {
                 let color = this.image.getPixelColor(i, j);
@@ -286,6 +287,8 @@ class Pixels {
               console.log("Map generated!");
 
               this.jobs = this.pixels.slice().sort(this.importances.importanceSorter);//.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
+
+              console.log(this.jobs.filter(el => el.absCoords[0] == -486 && el.absCoords[1] == 2818));
 
               /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
               this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
@@ -327,7 +330,7 @@ class Pixels {
   }
 
   nextJob() {
-    if (this.jobs.length === 0) { return null; }
+    if (this.jobs.length === 0 || this.jobs.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).length == 0) { return null; }
     let job = this.jobs.slice().filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong).shift();
     this.jobs.splice(this.jobs.indexOf(this.jobs.find(el => el.coords[0] == job.coords[0] && el.coords[1] == job.coords[1])), 1);
     job.id = this.getUniqueID();
