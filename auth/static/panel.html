@@ -14,6 +14,8 @@
       max-height: 80vw;
       overflow-y: auto;
       font-family: monospace;
+      display: flex;
+      flex-direction: column;
     }
     .logs {
       padding-right: 0;
@@ -29,6 +31,18 @@
     .time {
       color: #2d87d3;
       margin-right: 6px;
+    }
+    .input {
+      width: 99%;
+      position: relative;
+      bottom: 0;
+      align-self: center;
+      background: inherit;
+      border: inherit;
+      padding-top: 5px;
+      padding-bottom: 5px;
+      margin-top: 0;
+      color: var(--color-light);
     }
     </style>
   </head>
@@ -57,9 +71,81 @@
   </div>
 
   <script>
-    class Log {
-      constructor() {
+    class CommandHandler {
+      constructor(prefix, errorCallback) {
+        this.commands = [];
+        this.callbacks = [];
+        this.prefix = prefix;
+
+        this.error = errorCallback;
+
+        this.history = [];
+
         return this;
+      }
+      addCommand(command, callback) {
+        this.commands.push(command);
+        this.callbacks.push(callback);
+      }
+      executeCommand(command, log) {
+        const fullCommand = command.repeat(1);
+        this.history.unshift(fullCommand);
+
+        let prefix = this.prefix;
+        const args = command.replace(prefix, "").toLowerCase().split(" ").slice(1);
+        command = command.replace(prefix, "").toLowerCase().split(" ")[0];
+
+        let index = this.commands.indexOf(command);
+        if (index === -1) { this.error(fullCommand, log); return; }
+        this.callbacks[index](args);
+      }
+      getHistory(pos) {
+        if (pos < 0 || pos >= this.history.length) return null;
+        return this.history[pos];
+      }
+    }
+    class Log {
+      constructor(commandHandler) {
+        this.container = document.querySelector(".console");
+        this.input = document.querySelector(".input");
+
+        if (this.input) {
+          this.currentPos = 0;
+          this.input.addEventListener("keyup", (e) => {
+            if (e.keyCode === 13) {
+              this.currentPos = 0;
+              this.processCommand(this.input.value);
+              this.input.value = "";
+            }
+          });
+          this.input.addEventListener("keyup", (e) => {
+            if (e.keyCode === 38) {
+              if (!this.commandHandler) return;
+              let cHandler = this.commandHandler;
+              if (this.currentPos >= (cHandler.history.length)) return;
+              this.input.value = cHandler.getHistory(this.currentPos);
+              this.currentPos++;
+            }
+          });
+          this.input.addEventListener("keyup", (e) => {
+            if (e.keyCode === 40) {
+              if (!this.commandHandler) return;
+              let cHandler = this.commandHandler;
+              if (this.currentPos <= 0) return;
+              this.input.value = cHandler.getHistory(--this.currentPos);
+            }
+          })
+        }
+
+        this.commandHandler = commandHandler;
+        
+        return this;
+      }
+      processCommand(command) {
+        if (!this.commandHandler) { this.log(command); return; }
+        if (!command.startsWith(this.commandHandler.prefix)) { this.log(command); return; }
+
+        this.commandHandler.executeCommand(command, this);
       }
       format(date) {
         function fillEmpty(num) {
@@ -146,7 +232,18 @@
     var socket;
     var messageCount = -1;
 
-    const Logs = new Log();
+    const commandHandler = new CommandHandler("/", (cmd, log) => {
+      log.log("Unknown command: '" + cmd + "'");
+    });
+    commandHandler.addCommand("token", (args) => {
+      if (args[0]) {
+        console.log("setting to: " + args[0]);
+      } else {
+        console.log("resetting token");
+      }
+    });
+
+    const Logs = new Log(commandHandler);
     function log(msg) {return Logs.log(msg);}
     function error(msg) {return Logs.error(msg);}
     function success(msg) {return Logs.success(msg)}

@@ -150,7 +150,7 @@ class ImportanceAnalyzer {
     for (let i = 0; i < rateImps.length; i++) {
       let index = this.importances.findIndex(el => el.x == rateImps[i].x && el.y == rateImps[i].y);
       if (index == -1) {
-        this.importances.push({ x: rateImps[i].x, y: rateImps[i].y, importance: 255 + rateImps[i].importance, rateImp: rateImps[i].importance });
+        this.importances.push({ x: rateImps[i].x, y: rateImps[i].y, importance: 252 + rateImps[i].importance, rateImp: rateImps[i].importance });
         continue;
       }
       if (!this.importances[index].rateImp) this.importances[index].rateImp = 0;
@@ -269,7 +269,7 @@ class Pixels {
               for (let j = 0; j < this.height; j++) {
                 let color = this.image.getPixelColor(i, j);
                 var importance = this.importances.importances.find(el => el.x === i && el.y === j);
-                importance = (importance) ? importance.importance : 0;
+                importance = (importance) ? importance.importance : 255;
                 color = Jimp.intToRGBA(color);
                 this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
               }
@@ -286,9 +286,9 @@ class Pixels {
               });
               console.log("Map generated!");
 
+              //console.log(this.isWrong({ coords: [], color: }))
+              
               this.jobs = this.pixels.slice().sort(this.importances.importanceSorter);//.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
-
-              console.log(this.jobs.filter(el => el.absCoords[0] == -486 && el.absCoords[1] == 2818));
 
               /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
               this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
@@ -320,7 +320,7 @@ class Pixels {
   }
   */
   isWrong(pixel) {
-    return !pixel.color.index == this.canvas.matrix[pixel.coords[0]][pixel.coords[1]].index;
+    return pixel.color.index !== this.canvas.getColor(...pixel.coords).index;
   }
   getUniqueID() {
     function s4() {
