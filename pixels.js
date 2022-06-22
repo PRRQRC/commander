@@ -7,6 +7,31 @@ const { Worker } = require("worker_threads");
 const EnumColor = require("./colors.js");
 const fs = require("fs");
 
+class TacticsManager {
+  constructor(tactics) {
+    this.tactics = tactics;
+
+    this.tacticsENUM = [
+      { name: "column", id: 5},
+      { name: "random", id: 6}
+    ]
+    this.tacticsId = this.tacticsENUM.find(el => el.name == this.tactics);
+    this.tacticsId = (this.tacticsId) ? this.tacticsId.id : null;
+  }
+
+  reorderByTactics(jobs) {
+    if (this.tacticsId == 5 || null) return jobs;
+
+    let groups = {};
+    jobs.forEach(job => {
+      if (!groups[job.id]) return groups[job.id] = [job];
+      groups[job.id].push(job);
+    });
+
+    
+  }
+}
+
 class ImportanceAnalyzer {
   constructor(heatmap, color, opts) {
     this.heatmap = heatmap;
@@ -182,6 +207,7 @@ class Pixels {
     this.width = data.width;
     this.height = data.height;
     this.fingerprint = data.fingerprint;
+    this.tactics = data.tactics;
 
     this.pixels = [];
     this.jobs = [];
@@ -262,7 +288,7 @@ class Pixels {
             
             console.log("Analyzing heatmap...");
             this.important = this.importances.getImportantByHeatmap();
-            console.log("heatmap analyzed!");          
+            console.log("heatmap analyzed!");
             console.log("Processing importances...")
 
             for (let i = 0; i < this.width; i++) {
