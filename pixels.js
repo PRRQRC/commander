@@ -28,7 +28,7 @@ class TacticsManager {
       groups[job.id].push(job);
     });
 
-    
+
   }
 }
 
@@ -65,7 +65,6 @@ class ImportanceAnalyzer {
   emit(event, data) {
     this.eventEmitter.emit(event, data);
   }
-
   reload() {
     return new Promise((res, rej) => {
       this.pixels = [];
@@ -128,7 +127,7 @@ class ImportanceAnalyzer {
     if (a.rate > b.rate) { return 1; }
     return 0;
   }
-  
+
   rateUpdate(time) {
     this.changeRates = this.changeRates.map(el => { el.rate = el.changes / time; el.time = time; return el; });
   }
@@ -184,7 +183,7 @@ class ImportanceAnalyzer {
       this.importances[index].importance -= oldRateImp;
       this.importances[index].importance += rateImps[i].importance;
     };
-    
+
     this.eventEmitter.emit("importanceUpdate", this.importances);
     return;
   }
@@ -273,7 +272,7 @@ class Pixels {
 
         this.width = image.bitmap.width;
         this.height = image.bitmap.height;
-        
+
         this.image = image;
 
         console.log("Image loaded.");
@@ -281,17 +280,18 @@ class Pixels {
 
         this.importances.reload().then(() => {
           //this.pixels = this.sortByImportance(this.pixels);
-          
+
           console.log("Loading importance backup...");
           this.importances.loadBackup(this.save).then(() => {
             console.log("Importance backup loaded!");
-            
+
             console.log("Analyzing heatmap...");
             this.important = this.importances.getImportantByHeatmap();
             console.log("heatmap analyzed!");
             console.log("Processing importances...")
 
             for (let i = 0; i < this.width; i++) {
+              console.log("Processed " + ((i + 1) / this.width) + "%");
               for (let j = 0; j < this.height; j++) {
                 let color = this.image.getPixelColor(i, j);
                 var importance = this.importances.importances.find(el => el.x === i && el.y === j);
@@ -300,7 +300,7 @@ class Pixels {
                 this.pixels.push({ coords: [i, j], absCoords: [parseInt(this.x) + parseInt(i), parseInt(this.y) + parseInt(j)], color: color, converted: this.colors.convertColor(color), importance: importance });
               }
             }
-            
+
             console.log("Data processed!");
             console.log("Analyzing canvas...")
             this.syncPixelCanvas(isReconnect).then(() => {
@@ -313,7 +313,7 @@ class Pixels {
               console.log("Map generated!");
 
               //console.log(this.isWrong({ coords: [], color: }))
-              
+
               this.jobs = this.pixels.slice().sort(this.importances.importanceSorter);//.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
 
               /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
@@ -423,17 +423,18 @@ class Pixels {
           isInit = false;
           res(canvas);
         });
-        this.scraper.on("connectionError", (e) => { 
+        this.scraper.on("connectionError", (e) => {
           console.log("Error: ", e);
           console.warn("Connection to EventStream lost, scheduling reload after reconnect!")
           rej(e);
         });
         this.scraper.on("update", (data) => {
-          //console.log("Canvas updated: ", data);
+          console.log("Canvas updated: ", data);
+
           this.update(data);
         });
       }).catch((e) => {
-        
+
       });
     });
   }

@@ -18,7 +18,7 @@
     "jimp": "^0.16.1",
     "jsdom": "^19.0.0",
     "node-fetch": "^2.6.7",
-    "pixelcanvas-scraper": "^1.0.0",
+    "pixelcanvas-scraper": "^1.0.6",
     "ws": "^8.5.0"
   }
 }
