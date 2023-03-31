@@ -110,11 +110,11 @@ class ImportanceAnalyzer {
   getImportantByHeatmap() {
     if (!this.colored.length) { return []; }
     this.colored.forEach((pixel, i) => {
-      let color = Jimp.intToRGBA(pixel.color);
-      let importance = 257 - (Math.abs(color.r - this.color.r) + Math.abs(color.g - this.color.g) + Math.abs(color.b - this.color.b));
+      let importance = 255 + (pixel.color / Jimp.rgbaToInt(this.color.r, this.color.g, this.color.b, 255) * 20);
       this.importances.push({ x: pixel.x, y: pixel.y, importance: importance, heatmapImp: importance });
     });
     this.importances.sort(this.importanceSorter);
+    console.log(this.importances[0]);
     return this.importances;
   }
   rateSorter(a, b) {
@@ -146,18 +146,19 @@ class ImportanceAnalyzer {
   }
 
   computeRateImportances() {
-    return this.changeRates.map((el, i) => { el.importance = (i + 1); return el; });
+    return this.changeRates.map((el, i) => { el.importance = 0.5 * (i + 1); return el; });
   }
   update(data) {
     let time = (new Date()).getTime() - this.start.getTime();
     let x = data.x - this.opts.x;
     let y = data.y - this.opts.y;
     if (!this.changeRates.find(el => el.x === x && el.y === y)) {
-      this.changeRates.push({ time: time, x: x, y: y, changes: 1, rate: 1/time });
+      this.changeRates.push({ time: time; x: x, y: y, changes: 1, rate: 1/time });
     } else {
       let index = this.changeRates.findIndex(el => el.x === x && el.y === y);
       let changes = ++this.changeRates[index].changes;
       this.changeRates[index].rate = changes / time;
+      this.this.changeRates[index].time = time;
       console.log(time, changes / time);
     }
     /*if (Math.max(...this.changeRates.map(el => el.rate)) == this.changeRates[index].rate) {
@@ -175,6 +176,12 @@ class ImportanceAnalyzer {
       let index = this.importances.findIndex(el => el.x == rateImps[i].x && el.y == rateImps[i].y);
       if (index == -1) {
         this.importances.push({ x: rateImps[i].x, y: rateImps[i].y, importance: 252 + rateImps[i].importance, rateImp: rateImps[i].importance });
+        continue;
+      }
+      if (time - rateImps[i].time > 60 * 1000) {
+        this.changeRates.splice(this.changeRates.findIndex(e => e.x == rateImpts[i].x && e.y == rateImps[i].y));
+        this.importances[index].importance -= this.importances[index].rateImp;
+        this.importances[index].rateImp = 0;
         continue;
       }
       if (!this.importances[index].rateImp) this.importances[index].rateImp = 0;
@@ -291,7 +298,7 @@ class Pixels {
             console.log("Processing importances...")
 
             for (let i = 0; i < this.width; i++) {
-              console.log("Processed " + ((i + 1) / this.width) + "%");
+              console.log("Processed " + (((i + 1) / this.width) * 100) + "%");
               for (let j = 0; j < this.height; j++) {
                 let color = this.image.getPixelColor(i, j);
                 var importance = this.importances.importances.find(el => el.x === i && el.y === j);
@@ -315,6 +322,7 @@ class Pixels {
               //console.log(this.isWrong({ coords: [], color: }))
 
               this.jobs = this.pixels.slice().sort(this.importances.importanceSorter);//.filter(el => this.map[el.absCoords[0]][el.absCoords[1]].isWrong);
+              console.log(this.jobs[0]);
 
               /*this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}'));
               this.update(JSON.parse('{"x":-511,"y":2782,"color":{"index":0,"name":"white","rgb":[255,255,255,255]}}')); // Testing purposes
@@ -429,7 +437,7 @@ class Pixels {
           rej(e);
         });
         this.scraper.on("update", (data) => {
-          console.log("Canvas updated: ", data);
+          //console.log("Canvas updated: ", data);
 
           this.update(data);
         });

@@ -29,7 +29,7 @@ app.use(cors({ origin: "https://pixelcanvas.io" }))
 app.use(bodyParser.text());
 
 const sockets = [];
- 
+
 const Token = "|,JDF%:tgi^?opX2`:2zAUTv8J8u@=";
 var mainServer
 
@@ -256,7 +256,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname + '/static/index.html'))
 })
 
-app.listen(3000, function () {
+app.listen(require("config.json").port, function () {
   console.log('App listening! Link: http://localhost:3000/');
 });
 
